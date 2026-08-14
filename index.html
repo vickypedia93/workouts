@@ -249,83 +249,78 @@ function startWorkout(pid,did){
 function renderWorkout(){
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
-  document.getElementById("content").innerHTML =
-    `<div class="row" style="margin-bottom:12px">
+  const people=workoutProfiles.map(id=>data.profiles.find(x=>x.id===id)).filter(Boolean);
+
+  document.getElementById("content").innerHTML = `
+    <div class="row" style="margin-bottom:12px">
       <button class="secondary" onclick="showTab('home')">← Tillbaka</button>
       <span class="pill">${esc(p.name)}</span>
     </div>
     <div class="card">
-      <div class="row">
-        <div>
-          <h2 style="margin:0">🏋️ ${esc(d.name)}</h2>
-          <div class="sub">${new Date().toLocaleDateString("sv-SE")}</div>
-        </div>
-        <span class="pill">👥 ${workoutProfiles.length===2?"2 personer":"1 person"}</span>
-      </div>
-      <div class="sub" style="margin-top:8px">${workoutProfiles.map(id=>esc((data.profiles.find(x=>x.id===id)||{}).name||id)).join(" + ")}</div>
+      <h2 style="margin:0">🏋️ ${esc(d.name)}</h2>
+      <div class="sub">${new Date().toLocaleDateString("sv-SE")}</div>
+      <div class="sub" style="margin-top:6px">👥 ${people.map(x=>esc(x.name)).join(" + ")}</div>
+      <div class="sub" style="margin-top:4px">Varje person fyller i sin egen vikt och sina egna reps.</div>
     </div>
     <div id="workout"></div>
-    <button style="width:100%;margin-top:8px" onclick="finishWorkout()">✓ Avsluta pass</button>`;
+    <button style="width:100%;margin-top:8px" onclick="finishWorkout()">✓ Avsluta pass</button>
+  `;
 
   const w=document.getElementById("workout");
-  w.innerHTML=d.exercises.map((e,i)=>{
-    const people=workoutProfiles.map((id,pi)=>{
-      const person=(data.profiles.find(x=>x.id===id)||{name:id}).name;
-      return `<div style="margin-bottom:12px">
-        <div class="row" style="margin-bottom:5px"><div class="sub"><b>👤 ${esc(person)}</b></div><button class="secondary" onclick="addSet(${i},true,${pi})">＋ Set</button></div>
-        <div class="sets">
-          <div class="head">#</div>
-          <div class="head">${e==="Övrigt"?"VILKEN ÖVNING":"KG"}</div>
-          <div class="head">${e==="Övrigt"?"TID":"REPS"}</div>
-          <div></div>
-        </div>
-        <div id="sets-${i}-${pi}"></div>
-      </div>`;
-    }).join("");
-
-    return `<div class="card">
+  w.innerHTML=d.exercises.map((ex,ei)=>`
+    <div class="card">
       <div class="row">
-        <b>${e==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(e)}</b>
-        <button class="secondary" onclick="addSetForExercise(${i})">＋ Set för alla</button>
+        <b>${ex==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(ex)}</b>
       </div>
-      <div style="margin-top:10px">${people}</div>
-    </div>`;
-  }).join("");
+      <div style="margin-top:12px">
+        ${people.map((person,pi)=>`
+          <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
+            <div class="row">
+              <b>👤 ${esc(person.name)}</b>
+              <button class="secondary" onclick="addSet(${ei},${pi})">＋ Set</button>
+            </div>
+            <div class="sets" style="margin-top:7px">
+              <div class="head">#</div>
+              <div class="head">${ex==="Övrigt"?"ÖVNING":"KG"}</div>
+              <div class="head">${ex==="Övrigt"?"TID":"REPS"}</div>
+              <div></div>
+            </div>
+            <div id="sets-${ei}-${pi}"></div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
 
-  d.exercises.forEach((_,i)=>{
-    workoutProfiles.forEach((_,pi)=>addSet(i,false,pi));
+  d.exercises.forEach((_,ei)=>{
+    people.forEach((_,pi)=>addSet(ei,pi));
   });
 }
-function addSetForExercise(i){
-  workoutProfiles.forEach((_,pi)=>addSet(i,true,pi));
-}
-function addSet(i,focus=true,profileIndex=0){
-  const box=document.getElementById(`sets-${i}-${profileIndex}`);
-  if(!box)return;
 
+function addSet(ei,pi){
+  const box=document.getElementById(`sets-${ei}-${pi}`);
+  if(!box)return;
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
-  const ex=d.exercises[i];
+  const ex=d.exercises[ei];
   const n=box.children.length+1;
 
   if(ex==="Övrigt"){
-    box.insertAdjacentHTML("beforeend",
-      `<div class="sets other-set" data-set="${n}">
+    box.insertAdjacentHTML("beforeend",`
+      <div class="sets other-set" data-set="${n}">
         <div>${n}</div>
-        <input class="other-name" placeholder="Vilken övning?">
-        <input class="other-time" placeholder="Tid, t.ex. 1:00">
+        <input class="other-name" placeholder="T.ex. Plankan">
+        <input class="other-time" placeholder="T.ex. 1:00">
         <button class="check" onclick="this.parentElement.remove()">✓</button>
-      </div>`
-    );
-  } else {
-    box.insertAdjacentHTML("beforeend",
-      `<div class="sets" data-set="${n}">
+      </div>`);
+  }else{
+    box.insertAdjacentHTML("beforeend",`
+      <div class="sets" data-set="${n}">
         <div>${n}</div>
-        <input inputmode="decimal" placeholder="kg">
-        <input inputmode="numeric" placeholder="reps">
+        <input class="weight-input" inputmode="decimal" placeholder="kg">
+        <input class="reps-input" inputmode="numeric" placeholder="reps">
         <button class="check" onclick="this.parentElement.remove()">✓</button>
-      </div>`
-    );
+      </div>`);
   }
 }
 function finishWorkout(){
@@ -334,13 +329,13 @@ function finishWorkout(){
   const date=new Date().toISOString();
 
   workoutProfiles.forEach((profileId,pi)=>{
-    d.exercises.forEach((ex,i)=>{
-      const rows=[...document.querySelectorAll(`#sets-${i}-${pi} > .sets`)];
+    d.exercises.forEach((ex,ei)=>{
+      const rows=[...document.querySelectorAll(`#sets-${ei}-${pi} > .sets`)];
 
       if(ex==="Övrigt"){
-        rows.forEach(r=>{
-          const name=r.querySelector(".other-name")?.value.trim();
-          const time=r.querySelector(".other-time")?.value.trim();
+        rows.forEach(row=>{
+          const name=row.querySelector(".other-name")?.value.trim();
+          const time=row.querySelector(".other-time")?.value.trim();
           if(name || time){
             data.logs.push({
               date, profileId, exercise:"Övrigt",
@@ -349,15 +344,15 @@ function finishWorkout(){
             });
           }
         });
-      } else {
-        const sets=rows
-          .map(r=>({
-            kg:parseFloat(r.children[1].value)||0,
-            reps:parseInt(r.children[2].value)||0
-          }))
-          .filter(s=>s.kg||s.reps);
+      }else{
+        const sets=rows.map(row=>({
+          kg:parseFloat(row.querySelector(".weight-input")?.value)||0,
+          reps:parseInt(row.querySelector(".reps-input")?.value)||0
+        })).filter(s=>s.kg>0 || s.reps>0);
 
-        if(sets.length)data.logs.push({date,profileId,exercise:ex,sets});
+        if(sets.length){
+          data.logs.push({date,profileId,exercise:ex,sets});
+        }
       }
     });
   });
