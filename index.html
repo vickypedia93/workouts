@@ -31,6 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -126,7 +127,187 @@ save();
 
 let currentTab="home", activeDay=null, workoutProfiles=["p1"], activeWorkoutDate=null;
 
-function save(){localStorage.setItem("traningslogg",JSON.stringify(data))}
+function save(){
+  localStorage.setItem("traningslogg",JSON.stringify(data));
+  syncToCloud().catch(err=>console.warn("Workouts sync:",err));
+}
+
+const SUPABASE_URL="https://kkhrbigbiivdegdedptd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_k3m92w0XLYKG30252TCDzw_QHiYWkmP";
+const cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
+function isoDateOnly(value){
+  return new Date(value).toISOString().slice(0,10);
+}
+function localLogSignature(log,profileName){
+  return [
+    profileName,
+    isoDateOnly(log.date),
+    log.exercise,
+    log.isExtra?"1":"0",
+    JSON.stringify(log.sets||[])
+  ].join("|");
+}
+async function syncToCloud(){
+  if(!navigator.onLine)return;
+
+  // Map local profiles to cloud profiles by name.
+  const {data:remoteProfiles,error:profileError}=await cloudClient.from("profiles").select("*");
+  if(profileError) throw profileError;
+  const remoteByName={};
+  (remoteProfiles||[]).forEach(p=>remoteByName[p.name]=p);
+
+  for(const lp of data.profiles){
+    if(!remoteByName[lp.name]){
+      const {data:created,error}=await cloudClient.from("profiles").insert({name:lp.name}).select().single();
+      if(error) throw error;
+      remoteByName[lp.name]=created;
+    }
+  }
+
+  const {data:remoteWorkouts,error:workoutError}=await cloudClient.from("workouts").select("*");
+  if(workoutError) throw workoutError;
+  const workoutIds=(remoteWorkouts||[]).map(w=>w.id);
+  let remoteSets=[];
+  if(workoutIds.length){
+    const {data:rs,error:setError}=await cloudClient.from("workout_sets").select("*").in("workout_id",workoutIds);
+    if(setError) throw setError;
+    remoteSets=rs||[];
+  }
+
+  const remoteBySignature=new Set();
+  (remoteWorkouts||[]).forEach(w=>{
+    const person=(remoteProfiles||[]).find(p=>p.id===w.profile_id);
+    const sets=remoteSets.filter(s=>s.workout_id===w.id).map(s=>({
+      kg:s.weight==null?0:Number(s.weight),
+      reps:s.reps==null?0:Number(s.reps),
+      ...(s.duration?{duration:s.duration}:{}),
+      ...(s.exercise_name==="Övrigt"&&s.duration?{name:"Övrigt"}:{})
+    }));
+    // For cloud entries, include exercise name and set values in the signature.
+    const exerciseGroups={};
+    remoteSets.filter(s=>s.workout_id===w.id).forEach(s=>{
+      if(!exerciseGroups[s.exercise_name])exerciseGroups[s.exercise_name]=[];
+      exerciseGroups[s.exercise_name].push({
+        kg:s.weight==null?0:Number(s.weight),
+        reps:s.reps==null?0:Number(s.reps),
+        ...(s.duration?{duration:s.duration}:{}),
+        
+      });
+    });
+    Object.entries(exerciseGroups).forEach(([ex,arr])=>{
+      const isOther=ex.startsWith("Övrigt:");
+      const cleanEx=isOther?"Övrigt":ex;
+      if(isOther)arr.forEach(s=>s.name=ex.slice(7).trim());
+      const sig=[person?.name||"",w.workout_date,cleanEx,isOther?"1":"0",JSON.stringify(arr)].join("|");
+      remoteBySignature.add(sig);
+    });
+  });
+
+  // Upload local logs that are not already present.
+  for(const log of data.logs){
+    const lp=data.profiles.find(p=>p.id===log.profileId);
+    if(!lp || !remoteByName[lp.name])continue;
+    const remoteProfile=remoteByName[lp.name];
+    const date=isoDateOnly(log.date);
+    const signature=localLogSignature(log,lp.name);
+    if(remoteBySignature.has(signature))continue;
+
+    const {data:rw,error:rwError}=await cloudClient.from("workouts").insert({
+      profile_id:remoteProfile.id,
+      workout_date:date,
+      program_name:"",
+      workout_name:""
+    }).select().single();
+    if(rwError) throw rwError;
+
+    const rows=(log.sets||[]).map((s,i)=>({
+      workout_id:rw.id,
+      exercise_name:(log.exercise==="Övrigt" && log.sets?.[0]?.name) ? ("Övrigt: "+log.sets[0].name) : log.exercise,
+      set_number:i+1,
+      weight:(s.kg!==undefined && s.kg!==0)?s.kg:null,
+      reps:(s.reps!==undefined && s.reps!==0)?s.reps:null,
+      duration:s.time||s.duration||null,
+      is_extra:!!log.isExtra
+    }));
+    if(rows.length){
+      const {error:rsError}=await cloudClient.from("workout_sets").insert(rows);
+      if(rsError) throw rsError;
+    }
+    remoteBySignature.add(signature);
+  }
+}
+async function syncFromCloud(){
+  if(!navigator.onLine)return;
+  try{
+    const {data:remoteProfiles,error:profileError}=await cloudClient.from("profiles").select("*").order("created_at");
+    if(profileError)throw profileError;
+
+    // Add remote profiles locally by name.
+    (remoteProfiles||[]).forEach(rp=>{
+      if(!data.profiles.some(lp=>lp.name===rp.name)){
+        data.profiles.push({id:"cloud_"+rp.id,name:rp.name});
+      }
+    });
+
+    const {data:remoteWorkouts,error:workoutError}=await cloudClient.from("workouts").select("*");
+    if(workoutError)throw workoutError;
+    const ids=(remoteWorkouts||[]).map(w=>w.id);
+    let remoteSets=[];
+    if(ids.length){
+      const {data:rs,error:setError}=await cloudClient.from("workout_sets").select("*").in("workout_id",ids);
+      if(setError)throw setError;
+      remoteSets=rs||[];
+    }
+
+    const remoteProfilesById={};
+    (remoteProfiles||[]).forEach(p=>remoteProfilesById[p.id]=p);
+
+    for(const w of remoteWorkouts||[]){
+      const rp=remoteProfilesById[w.profile_id];
+      if(!rp)continue;
+      const lp=data.profiles.find(p=>p.name===rp.name);
+      if(!lp)continue;
+
+      const groups={};
+      remoteSets.filter(s=>s.workout_id===w.id).forEach(s=>{
+        if(!groups[s.exercise_name])groups[s.exercise_name]=[];
+        groups[s.exercise_name].push({
+          kg:s.weight==null?0:Number(s.weight),
+          reps:s.reps==null?0:Number(s.reps),
+          ...(s.duration?{time:s.duration}:{}),
+          
+        });
+      });
+
+      for(const [exercise,sets] of Object.entries(groups)){
+        const isOther=exercise.startsWith("Övrigt:");
+        if(isOther){
+          const customName=exercise.slice(7).trim();
+          sets.forEach(s=>s.name=customName);
+        }
+        const cleanExercise=isOther?"Övrigt":exercise;
+        const candidate={date:new Date(w.workout_date+"T12:00:00").toISOString(),profileId:lp.id,exercise:cleanExercise,sets,isExtra:isOther||sets.some(s=>s.time)};
+        const sig=localLogSignature(candidate,lp.name);
+        const exists=data.logs.some(l=>{
+          const p=data.profiles.find(x=>x.id===l.profileId);
+          return p && localLogSignature(l,p.name)===sig;
+        });
+        if(!exists)data.logs.push(candidate);
+      }
+    }
+
+    localStorage.setItem("traningslogg",JSON.stringify(data));
+    render();
+    // Push any newly discovered local profiles/logs back so both devices converge.
+    await syncToCloud();
+  }catch(err){
+    console.warn("Workouts cloud sync:",err);
+  }
+}
+
+window.addEventListener("online",()=>syncFromCloud());
+
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function showTab(tab){currentTab=tab; document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active")); document.getElementById("nav"+tab[0].toUpperCase()+tab.slice(1)).classList.add("active"); render()}
 function render(){
@@ -317,6 +498,10 @@ function renderWorkout(){
       <div class="sub" style="margin-top:4px">Alla valda personer fyller i sin egen vikt och sina egna reps samtidigt.</div>
     </div>
     <div class="card" style="background:#f7f8f9"><b>✍️ Registrera samtidigt</b><div class="sub">Varje person har sina egna kg, reps och set under samma övning.</div></div><div id="workout"></div>
+    <div class="card" style="text-align:center">
+      <button class="secondary" onclick="addExtraExerciseDuringWorkout()">➕ Lägg till extra övning</button>
+      <div class="sub" style="margin-top:6px">Får du feeling kan du lägga till vad du vill utan att ändra träningsprogrammet.</div>
+    </div>
     <button style="width:100%;margin-top:8px" onclick="finishWorkout()">✓ Avsluta pass</button>
   `;
 
@@ -377,6 +562,53 @@ function addSet(ei,pi){
       </div>`);
   }
 }
+function addExtraExerciseDuringWorkout(){
+  const options=EXERCISES.filter(e=>e!=="Övrigt").map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  openModal(`<h2>➕ Extra övning</h2>
+    <div class="sub">Den här övningen läggs bara till på dagens pass. Ditt program ändras inte.</div>
+    <label style="display:block;margin-top:12px">Övning
+      <select id="extraExerciseSelect" style="width:100%;padding:10px">
+        <option value="">Välj övning</option>${options}
+        <option value="__custom">✏️ Annan övning</option>
+      </select>
+    </label>
+    <div id="customExtraWrap" style="display:none;margin-top:10px">
+      <input id="customExtraName" placeholder="Vilken övning?">
+    </div>
+    <div class="actions">
+      <button onclick="addSelectedExtraExercise()">Lägg till</button>
+      <button class="secondary" onclick="closeModal()">Avbryt</button>
+    </div>`);
+  const sel=document.getElementById("extraExerciseSelect");
+  if(sel)sel.onchange=()=>{document.getElementById("customExtraWrap").style.display=sel.value==="__custom"?"block":"none";};
+}
+function addSelectedExtraExercise(){
+  const sel=document.getElementById("extraExerciseSelect");
+  let ex=sel?.value||"";
+  if(ex==="__custom")ex=document.getElementById("customExtraName")?.value.trim()||"";
+  if(!ex){alert("Välj eller skriv en övning.");return;}
+
+  const w=document.getElementById("workout");
+  const ei=999000+Date.now();
+  const people=workoutProfiles.map((id,pi)=>{
+    const person=(data.profiles.find(x=>x.id===id)||{name:id}).name;
+    return `<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
+      <div class="row"><b>👤 ${esc(person)}</b><button class="secondary" onclick="addSet(${ei},${pi})">＋ Set</button></div>
+      <div class="sets" style="margin-top:7px">
+        <div class="head">#</div><div class="head">KG</div><div class="head">REPS</div><div></div>
+      </div>
+      <div id="sets-${ei}-${pi}"></div>
+    </div>`;
+  }).join("");
+
+  w.insertAdjacentHTML("beforeend",`<div class="card extra-workout-exercise" data-extra-exercise="${esc(ex)}" data-extra-id="${ei}">
+    <div class="row"><div><b>🔥 ${esc(ex)}</b><div class="sub">Extra övning</div></div><button class="danger" onclick="this.closest('.extra-workout-exercise').remove()">Ta bort</button></div>
+    <div>${people}</div>
+  </div>`);
+
+  workoutProfiles.forEach((_,pi)=>addSet(ei,pi));
+  closeModal();
+}
 function finishWorkout(){
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
@@ -409,6 +641,18 @@ function finishWorkout(){
           data.logs.push({date,profileId,exercise:ex,sets});
         }
       }
+    });
+
+    // Extra övningar som lades till efter att passet startade.
+    document.querySelectorAll(".extra-workout-exercise").forEach(card=>{
+      const ex=card.dataset.extraExercise;
+      const extraId=card.dataset.extraId;
+      const rows=[...document.querySelectorAll(`#sets-${extraId}-${pi} > .sets`)];
+      const sets=rows.map(row=>({
+        kg:parseFloat(row.querySelector(".weight-input")?.value)||0,
+        reps:parseInt(row.querySelector(".reps-input")?.value)||0
+      })).filter(s=>s.kg>0 || s.reps>0);
+      if(sets.length)data.logs.push({date,profileId,exercise:ex,sets,isExtra:true});
     });
   });
 
@@ -602,6 +846,7 @@ function deleteProgram(pid){if(confirm("Ta bort programmet?")){data.programs=dat
 function openModal(html){document.getElementById("sheet").innerHTML=html;document.getElementById("modal").classList.add("open")}
 function closeModal(){document.getElementById("modal").classList.remove("open")}
 render();
+syncFromCloud();
 </script>
 </body>
 </html>
