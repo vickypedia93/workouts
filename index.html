@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Workouts</title>
+  <style>
+    :root{--bg:#f5f6f8;--card:#fff;--text:#17202a;--muted:#697586;--accent:#5a7d87;--accent2:#3f626d;--border:#e4e7eb;--danger:#c94b4b}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .app{max-width:760px;margin:auto;padding:18px 16px 90px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    h1{font-size:28px;margin:0}.sub{color:var(--muted);font-size:14px;margin-top:3px}
+    button{border:0;border-radius:12px;padding:12px 15px;font-weight:700;background:var(--accent);color:#fff;font-size:15px}
+    button.secondary{background:#e9eef0;color:var(--accent2)} button.danger{background:#f8e6e6;color:var(--danger)}
+    .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.nav button{background:var(--card);color:var(--muted);border:1px solid var(--border)}
+    .nav button.active{background:var(--accent);color:white;border-color:var(--accent)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 2px 10px #00000008}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}.row + .row{margin-top:10px}
+    .pill{font-size:12px;padding:6px 9px;border-radius:99px;background:#edf2f3;color:var(--accent2);font-weight:700}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{padding:14px;background:#f7f8f9;border-radius:14px}.stat b{display:block;font-size:24px}.muted{color:var(--muted)}
+    input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:white}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .exercise{padding:14px 0;border-top:1px solid var(--border)} .exercise:first-child{border-top:0}
+    .sets{display:grid;grid-template-columns:34px 1fr 1fr 44px;gap:7px;align-items:center;margin-top:9px}.sets .head{font-size:12px;color:var(--muted);font-weight:700}
+    .sets input{padding:9px;font-size:15px}.other-set input{min-width:0}.check{background:#e8f1ed;color:#2e7050;padding:9px;border-radius:9px;text-align:center}
+    .empty{text-align:center;padding:35px 10px;color:var(--muted)} .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .modal{position:fixed;inset:0;background:#0007;display:none;align-items:end;z-index:5}.modal.open{display:flex}.sheet{background:white;width:100%;max-width:760px;margin:auto;border-radius:22px 22px 0 0;padding:20px;max-height:90vh;overflow:auto}
+    .exercisePick{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);cursor:grab}.exercisePick:active{cursor:grabbing}
+.calendarHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.calDow{font-size:11px;color:var(--muted);text-align:center;padding:4px 0;font-weight:700}.calDay{min-height:52px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:5px;text-align:center;cursor:pointer}.calDay.mutedDay{opacity:.35}.calDay.today{border:2px solid var(--accent)}.calNum{font-size:12px;color:var(--muted)}.calEmoji{font-size:20px;line-height:24px}.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:10px}.dayList{padding:10px 0;border-bottom:1px solid var(--border)}
+
+    @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen.</div></div>
+    <div class="actions" style="margin:0"><button class="secondary" onclick="showProfiles()">👤 <span id="activeProfileName"></span></button><button onclick="showCreateProgram()">＋ Program</button></div>
+  </div>
+
+  <div class="nav">
+    <button id="navHome" class="active" onclick="showTab('home')">🏋️ Träna</button>
+    <button id="navPrograms" onclick="showTab('programs')">📋 Program</button>
+    <button id="navCalendar" onclick="showTab('calendar')">📅 Kalender</button>
+    <button id="navStats" onclick="showTab('stats')">📈 Utveckling</button>
+  </div>
+
+  <main id="content"></main>
+</div>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const EXERCISES = ["Övrigt",
+  "Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown",
+  "Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl",
+  "Knäböj","RDL","Bulgarian split squat","Hip thrust","Benspark","Lårcurl","Vadpress",
+  "Pull-ups","Chest-supported row","Cable fly","Leg press","Leg extension"
+];
+const defaultData = {
+  programs:[{id:"ppl",name:"PPL",days:[
+    {id:"push",name:"PUSH",exercises:["Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown"]},
+    {id:"pull",name:"PULL",exercises:["Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl"]},
+    {id:"leg",name:"LEG",exercises:["Knäböj","RDL","Bulgarian split squat","Hip thrust","Benspark"]}
+  ]}],
+  logs:[]
+};
+let data = JSON.parse(localStorage.getItem("traningslogg") || "null") || defaultData;
+if(!data.profiles) data.profiles=[{id:"p1",name:"Vicky"},{id:"p2",name:"Viktor"}];
+if(!Array.isArray(data.programs) || data.programs.length===0){
+  data.programs=defaultData.programs;
+  save();
+}
+if(!data.activeProfile) data.activeProfile="p1";
+
+if(Array.isArray(data.profiles)){
+  const p1=data.profiles.find(x=>x.id==="p1");
+  const p2=data.profiles.find(x=>x.id==="p2");
+  if(p1 && (p1.name==="Person 1" || p1.name==="Person1")) p1.name="Vicky";
+  if(p2 && (p2.name==="Person 2" || p2.name==="Person2")) p2.name="Viktor";
+}
+save();
+
+let currentTab="home", activeDay=null, workoutProfiles=["p1"];
+
+function save(){localStorage.setItem("traningslogg",JSON.stringify(data))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showTab(tab){currentTab=tab; document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active")); document.getElementById("nav"+tab[0].toUpperCase()+tab.slice(1)).classList.add("active"); render()}
+function render(){
+  const profileEl=document.getElementById("activeProfileName");
+  if(profileEl){
+    const ap=data.profiles.find(x=>x.id===data.activeProfile) || data.profiles[0];
+    profileEl.textContent=ap ? ap.name : "Profil";
+  }
+  const c=document.getElementById("content");
+  if(currentTab==="home") renderHome(c); else if(currentTab==="programs") renderPrograms(c); else if(currentTab==="calendar") renderCalendar(c); else renderStats(c);
+}
+function renderHome(c){
+  if(!Array.isArray(data.programs) || !data.programs.length){
+    c.innerHTML=`<div class="card empty">
+      <div style="font-size:42px">🏋️</div>
+      <h2>Inga träningsprogram ännu</h2>
+      <div class="sub">Skapa ditt första program för att komma igång.</div>
+      <br><button onclick="showCreateProgram()">＋ Skapa program</button>
+    </div>`;
+    return;
+  }
+
+  c.innerHTML = `
+    <div class="card">
+      <div class="row">
+        <div>
+          <b>🏋️ Dagens träning</b>
+          <div class="sub">Välj direkt vilket pass du vill köra.</div>
+        </div>
+        <button class="secondary" onclick="showTrainingMode()">👥 Träna tillsammans</button>
+      </div>
+    </div>
+    ${data.programs.map(p=>`
+      <div class="card">
+        <div class="row">
+          <div>
+            <h2 style="margin:0">📋 ${esc(p.name)}</h2>
+            <div class="sub">${p.days.length} träningspass</div>
+          </div>
+          <button class="secondary" onclick="showTab('programs')">✏️ Redigera</button>
+        </div>
+        <div class="actions">
+          ${p.days.length
+            ? p.days.map(d=>`<button class="secondary" onclick="startWorkout('${p.id}','${d.id}')">🏋️ ${esc(d.name)}</button>`).join("")
+            : `<span class="muted">Inga pass ännu.</span>`
+          }
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+function renderPrograms(c){
+ c.innerHTML = data.programs.map(p=>`<div class="card"><div class="row"><h3 style="margin:0">${esc(p.name)}</h3><button class="danger" onclick="deleteProgram('${p.id}')">Ta bort</button></div>
+ ${p.days.map(d=>`<div class="exercise"><div class="row"><b>${esc(d.name)}</b><div class="actions" style="margin:0"><button class="secondary" onclick="editExercises('${p.id}','${d.id}')">✎ Redigera</button><button class="secondary" onclick="addExercise('${p.id}','${d.id}')">＋ Övning</button></div></div>
+ <div class="muted" style="margin-top:8px">${d.exercises.length?d.exercises.map(esc).join(" · "):"Inga övningar"}</div></div>`).join("")}
+ <button onclick="addDay('${p.id}')">＋ Lägg till pass</button></div>`).join("")+
+ `<div class="card"><button class="secondary" onclick="showCreateProgram()">＋ Skapa nytt program</button></div>`;
+}
+
+function dateKey(date){return new Date(date).toISOString().slice(0,10)}
+function logsForDay(key){return data.logs.filter(l=>dateKey(l.date)===key && (!l.profileId || l.profileId===data.activeProfile))}
+function workoutDates(){
+  return [...new Set(data.logs.map(l=>dateKey(l.date)))].sort();
+}
+function qualityForDay(key){
+  const logs=logsForDay(key);
+  if(!logs.length)return "";
+  const totalSets=logs.reduce((n,l)=>n+l.sets.length,0);
+  const totalReps=logs.reduce((n,l)=>n+l.sets.reduce((a,s)=>a+s.reps,0),0);
+  let improved=false;
+  logs.forEach(l=>{
+    const previous=data.logs.filter(x=>x.exercise===l.exercise && dateKey(x.date)<key);
+    const oldMax=previous.length ? Math.max(...previous.flatMap(x=>x.sets.map(s=>s.kg||0))) : 0;
+    const newMax=Math.max(...l.sets.map(s=>s.kg||0));
+    if(oldMax>0 && newMax>oldMax) improved=true;
+  });
+  const hasExtra=logs.some(l=>l.isExtra);
+  if(improved || hasExtra || totalReps>=40 || totalSets>=15)return "🔥";
+  if(totalReps>=25 || totalSets>=9)return "💪";
+  return "🙂";
+}
+function monthKey(year,month){return `${year}-${String(month+1).padStart(2,"0")}`}
+let calendarCursor=new Date();
+function peopleForDay(key){
+  const ids=[...new Set(data.logs.filter(l=>dateKey(l.date)===key && l.profileId).map(l=>l.profileId))];
+  return ids.map(id=>data.profiles.find(p=>p.id===id)).filter(Boolean);
+}
+function renderCalendar(c){
+  const y=calendarCursor.getFullYear(), m=calendarCursor.getMonth();
+  const first=new Date(y,m,1), last=new Date(y,m+1,0);
+  const start=(first.getDay()+6)%7;
+  const monthName=first.toLocaleDateString("sv-SE",{month:"long",year:"numeric"});
+  let cells="";
+  for(let i=0;i<start;i++) cells+=`<div class="calDay mutedDay"></div>`;
+  for(let day=1;day<=last.getDate();day++){
+    const key=`${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    const today=key===dateKey(new Date())?"today":"";
+    const emoji=qualityForDay(key);
+    const people=peopleForDay(key);
+    cells+=`<button class="calDay ${today}" onclick="showCalendarDay('${key}')"><div class="calNum">${day}</div><div class="calEmoji">${emoji||"·"}</div>${people.length?`<div style="font-size:9px;line-height:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${people.map(p=>`👤 ${esc(p.name)}`).join("<br>")}</div>`:""}</button>`;
+  }
+  c.innerHTML=`<div class="card">
+    <div class="calendarHead"><button class="secondary" onclick="changeMonth(-1)">‹</button><h2 style="margin:0;text-transform:capitalize">${monthName}</h2><button class="secondary" onclick="changeMonth(1)">›</button></div>
+    <div class="calendarGrid">${["Mån","Tis","Ons","Tor","Fre","Lör","Sön"].map(x=>`<div class="calDow">${x}</div>`).join("")}${cells}</div>
+    <div class="legend"><span>🔥 Starkt pass / tydlig progression</span><span>💪 Bra pass</span><span>🙂 Genomfört pass</span></div>
+  </div>
+  <div id="calendarDetail"></div>`;
+}
+function changeMonth(delta){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+delta,1);render()}
+function showCalendarDay(key){
+  const allLogs=data.logs.filter(l=>dateKey(l.date)===key);
+  const box=document.getElementById("calendarDetail");
+  if(!allLogs.length){
+    box.innerHTML=`<div class="card empty">Inget registrerat pass den ${new Date(key+"T12:00:00").toLocaleDateString("sv-SE")}.</div>`;
+    return;
+  }
+
+  const byProfile={};
+  allLogs.forEach(l=>{
+    const pid=l.profileId||"unknown";
+    if(!byProfile[pid])byProfile[pid]=[];
+    byProfile[pid].push(l);
+  });
+
+  box.innerHTML=`<div class="card">
+    <h3 style="margin:0 0 4px">📅 ${new Date(key+"T12:00:00").toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long"})}</h3>
+    <div class="sub">👥 Tränade: ${Object.keys(byProfile).map(pid=>esc((data.profiles.find(p=>p.id===pid)||{name:"Okänd"}).name)).join(", ")}</div>
+    ${Object.entries(byProfile).map(([pid,logs])=>{
+      const person=(data.profiles.find(p=>p.id===pid)||{name:"Okänd"}).name;
+      const grouped={};
+      logs.forEach(l=>{if(!grouped[l.exercise])grouped[l.exercise]=[];grouped[l.exercise].push(...l.sets)});
+      return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <h3 style="margin:0 0 8px">👤 ${esc(person)}</h3>
+        ${Object.entries(grouped).map(([ex,sets])=>`<div class="dayList"><b>${ex==="Övrigt"?"➕ ":"🏋️ "}${esc(ex)}</b><div class="muted">${ex==="Övrigt"?sets.map(s=>`${esc(s.name||"Övrigt")} · ${esc(s.time||"")}`).join(" · "):sets.map(s=>`${s.kg||0} kg × ${s.reps||0}`).join(" · ")}</div></div>`).join("")}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+function renderStats(c){
+ const all = data.logs;
+ const total = all.reduce((n,l)=>n+l.sets.length,0);
+ const workouts = new Set(all.map(l=>l.date)).size;
+ let best={};
+ all.forEach(l=>l.sets.forEach(s=>{if(s.kg>0) best[l.exercise]=Math.max(best[l.exercise]||0,s.kg)}));
+ c.innerHTML=`<div class="grid"><div class="stat"><span class="muted">Träningspass</span><b>${workouts}</b></div><div class="stat"><span class="muted">Registrerade set</span><b>${total}</b></div></div>
+ <div class="card" style="margin-top:12px"><h3>Personbästa i vikt</h3>${Object.keys(best).length?Object.entries(best).sort((a,b)=>b[1]-a[1]).map(([e,v])=>`<div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>${esc(e)}</span><b>${v} kg</b></div>`).join(""):'<div class="empty">Registrera ditt första pass så visas utvecklingen här.</div>'}</div>`;
+}
+function startWorkout(pid,did){
+  activeDay={pid,did};
+  workoutProfiles=[data.activeProfile];
+  renderWorkout();
+}
+function renderWorkout(){
+  const p=data.programs.find(x=>x.id===activeDay.pid);
+  const d=p.days.find(x=>x.id===activeDay.did);
+  document.getElementById("content").innerHTML =
+    `<div class="row" style="margin-bottom:12px">
+      <button class="secondary" onclick="showTab('home')">← Tillbaka</button>
+      <span class="pill">${esc(p.name)}</span>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div>
+          <h2 style="margin:0">🏋️ ${esc(d.name)}</h2>
+          <div class="sub">${new Date().toLocaleDateString("sv-SE")}</div>
+        </div>
+        <span class="pill">👥 ${workoutProfiles.length===2?"2 personer":"1 person"}</span>
+      </div>
+      <div class="sub" style="margin-top:8px">${workoutProfiles.map(id=>esc((data.profiles.find(x=>x.id===id)||{}).name||id)).join(" + ")}</div>
+    </div>
+    <div id="workout"></div>
+    <button style="width:100%;margin-top:8px" onclick="finishWorkout()">✓ Avsluta pass</button>`;
+
+  const w=document.getElementById("workout");
+  w.innerHTML=d.exercises.map((e,i)=>{
+    const people=workoutProfiles.map((id,pi)=>{
+      const person=(data.profiles.find(x=>x.id===id)||{name:id}).name;
+      return `<div style="margin-bottom:12px">
+        <div class="row" style="margin-bottom:5px"><div class="sub"><b>👤 ${esc(person)}</b></div><button class="secondary" onclick="addSet(${i},true,${pi})">＋ Set</button></div>
+        <div class="sets">
+          <div class="head">#</div>
+          <div class="head">${e==="Övrigt"?"VILKEN ÖVNING":"KG"}</div>
+          <div class="head">${e==="Övrigt"?"TID":"REPS"}</div>
+          <div></div>
+        </div>
+        <div id="sets-${i}-${pi}"></div>
+      </div>`;
+    }).join("");
+
+    return `<div class="card">
+      <div class="row">
+        <b>${e==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(e)}</b>
+        <button class="secondary" onclick="addSetForExercise(${i})">＋ Set för alla</button>
+      </div>
+      <div style="margin-top:10px">${people}</div>
+    </div>`;
+  }).join("");
+
+  d.exercises.forEach((_,i)=>{
+    workoutProfiles.forEach((_,pi)=>addSet(i,false,pi));
+  });
+}
+function addSetForExercise(i){
+  workoutProfiles.forEach((_,pi)=>addSet(i,true,pi));
+}
+function addSet(i,focus=true,profileIndex=0){
+  const box=document.getElementById(`sets-${i}-${profileIndex}`);
+  if(!box)return;
+
+  const p=data.programs.find(x=>x.id===activeDay.pid);
+  const d=p.days.find(x=>x.id===activeDay.did);
+  const ex=d.exercises[i];
+  const n=box.children.length+1;
+
+  if(ex==="Övrigt"){
+    box.insertAdjacentHTML("beforeend",
+      `<div class="sets other-set" data-set="${n}">
+        <div>${n}</div>
+        <input class="other-name" placeholder="Vilken övning?">
+        <input class="other-time" placeholder="Tid, t.ex. 1:00">
+        <button class="check" onclick="this.parentElement.remove()">✓</button>
+      </div>`
+    );
+  } else {
+    box.insertAdjacentHTML("beforeend",
+      `<div class="sets" data-set="${n}">
+        <div>${n}</div>
+        <input inputmode="decimal" placeholder="kg">
+        <input inputmode="numeric" placeholder="reps">
+        <button class="check" onclick="this.parentElement.remove()">✓</button>
+      </div>`
+    );
+  }
+}
+function finishWorkout(){
+  const p=data.programs.find(x=>x.id===activeDay.pid);
+  const d=p.days.find(x=>x.id===activeDay.did);
+  const date=new Date().toISOString();
+
+  workoutProfiles.forEach((profileId,pi)=>{
+    d.exercises.forEach((ex,i)=>{
+      const rows=[...document.querySelectorAll(`#sets-${i}-${pi} > .sets`)];
+
+      if(ex==="Övrigt"){
+        rows.forEach(r=>{
+          const name=r.querySelector(".other-name")?.value.trim();
+          const time=r.querySelector(".other-time")?.value.trim();
+          if(name || time){
+            data.logs.push({
+              date, profileId, exercise:"Övrigt",
+              sets:[{name:name||"Övrigt",time:time||""}],
+              isExtra:true
+            });
+          }
+        });
+      } else {
+        const sets=rows
+          .map(r=>({
+            kg:parseFloat(r.children[1].value)||0,
+            reps:parseInt(r.children[2].value)||0
+          }))
+          .filter(s=>s.kg||s.reps);
+
+        if(sets.length)data.logs.push({date,profileId,exercise:ex,sets});
+      }
+    });
+  });
+
+  save();
+  activeDay=null;
+  workoutProfiles=[data.activeProfile];
+  showTab("calendar");
+}
+
+function getPreviousForProfile(ex,profileId){
+  if(ex==="Övrigt")return "";
+  const logs=data.logs.filter(l=>l.exercise===ex && l.profileId===profileId);
+  if(!logs.length)return "";
+  const last=logs[logs.length-1];
+  return last.sets.map(s=>`${s.kg}×${s.reps}`).join(" · ");
+}
+function showProfiles(){
+  openModal(`<h2>👤 Profiler</h2>
+  <div class="sub" style="margin-bottom:10px">Välj en profil eller lägg till fler personer.</div>
+  ${data.profiles.map(p=>`<div class="exercisePick">
+    <span>👤 ${esc(p.name)}</span>
+    <div class="actions" style="margin:0">
+      <button class="secondary" onclick="selectProfile('${p.id}')">${p.id===data.activeProfile?"Vald":"Välj"}</button>
+      <button class="secondary" onclick="renameProfile('${p.id}')">✏️ Byt namn</button>
+      ${data.profiles.length>1 ? `<button class="danger" onclick="deleteProfile('${p.id}')">🗑️</button>` : ""}
+    </div>
+  </div>`).join("")}
+  <div class="actions">
+    <button onclick="addProfile()">＋ Lägg till person</button>
+    <button class="secondary" onclick="closeModal()">Stäng</button>
+  </div>`);
+}
+function selectProfile(id){
+  data.activeProfile=id;
+  save();
+  closeModal();
+  render();
+}
+function addProfile(){
+  openModal(`<h2>👤 Lägg till person</h2>
+  <div class="sub">Skriv namnet på personen.</div>
+  <input id="profileName" placeholder="Namn">
+  <div class="actions">
+    <button onclick="createProfile()">Lägg till</button>
+    <button class="secondary" onclick="showProfiles()">Avbryt</button>
+  </div>`);
+}
+function createProfile(){
+  const name=document.getElementById("profileName").value.trim();
+  if(!name)return;
+  const id="p"+Date.now();
+  data.profiles.push({id,name});
+  save();
+  showProfiles();
+}
+function renameProfile(id){
+  const p=data.profiles.find(x=>x.id===id);
+  if(!p)return;
+  openModal(`<h2>✏️ Byt namn</h2>
+  <input id="profileName" value="${esc(p.name)}">
+  <div class="actions">
+    <button onclick="saveProfileName('${id}')">Spara</button>
+    <button class="secondary" onclick="showProfiles()">Avbryt</button>
+  </div>`);
+}
+function saveProfileName(id){
+  const name=document.getElementById("profileName").value.trim();
+  if(!name)return;
+  const p=data.profiles.find(x=>x.id===id);
+  if(p)p.name=name;
+  save();
+  showProfiles();
+}
+function deleteProfile(id){
+  if(data.profiles.length<=1)return;
+  const p=data.profiles.find(x=>x.id===id);
+  if(!p)return;
+  if(!confirm(`Ta bort profilen ${p.name}? Träningshistoriken för profilen tas också bort.`))return;
+  data.profiles=data.profiles.filter(x=>x.id!==id);
+  data.logs=data.logs.filter(x=>x.profileId!==id);
+  if(data.activeProfile===id)data.activeProfile=data.profiles[0].id;
+  save();
+  showProfiles();
+}
+function showTrainingMode(){
+ openModal(`<h2>Träna tillsammans</h2><div class="sub">Välj vilka som tränar i samma pass.</div>
+ ${data.profiles.map(p=>`<label style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)"><input type="checkbox" style="width:auto" value="${p.id}" ${workoutProfiles.includes(p.id)?"checked":""}> ${esc(p.name)}</label>`).join("")}
+ <div class="actions"><button onclick="saveTrainingMode()">Starta</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`);
+}
+function saveTrainingMode(){
+ const ids=[...document.querySelectorAll('#sheet input[type="checkbox"]:checked')].map(x=>x.value);
+ workoutProfiles=ids.length?ids:[data.activeProfile];closeModal();
+ openModal(`<h2>Välj pass</h2>${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
+}
+function showCreateProgram(){
+ openModal(`<h2>Skapa träningsprogram</h2><input id="programName" placeholder="T.ex. PPL eller Upper/Lower"><div class="actions"><button onclick="createProgram()">Skapa</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`);
+}
+function createProgram(){const n=document.getElementById("programName").value.trim();if(!n)return;data.programs.push({id:Date.now().toString(),name:n,days:[]});save();closeModal();showTab("programs")}
+function addDay(pid){openModal(`<h2>Nytt träningspass</h2><input id="dayName" placeholder="T.ex. PUSH"><div class="actions"><button onclick="createDay('${pid}')">Lägg till</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`)}
+function createDay(pid){const n=document.getElementById("dayName").value.trim();if(!n)return;data.programs.find(p=>p.id===pid).days.push({id:Date.now().toString(),name:n,exercises:[]});save();closeModal();render()}
+
+function editExercises(pid,did){
+ const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+ openModal(`<h2>Redigera ${esc(d.name)}</h2>
+ <div class="sub" style="margin-bottom:10px">Dra övningarna för att ändra ordningen. Du kan också ta bort en övning.</div>
+ <div id="editList">${d.exercises.map((e,i)=>`<div class="exercisePick" draggable="true" data-i="${i}" ondragstart="dragStart(event)" ondragover="event.preventDefault()" ondrop="dropExercise(event,'${pid}','${did}')">
+   <span>☷ &nbsp;${esc(e)}</span><button class="danger" onclick="removeExercise('${pid}','${did}',${i})">Ta bort</button>
+ </div>`).join("")}</div>
+ <div class="actions"><button onclick="addExercise('${pid}','${did}')">＋ Lägg till övning</button><button class="secondary" onclick="closeModal();render()">Klar</button></div>`);
+}
+let draggedIndex=null;
+function dragStart(ev){draggedIndex=Number(ev.currentTarget.dataset.i);ev.dataTransfer.effectAllowed="move"}
+function dropExercise(ev,pid,did){
+ const target=Number(ev.currentTarget.dataset.i);
+ if(draggedIndex===null || draggedIndex===target)return;
+ const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+ const [item]=d.exercises.splice(draggedIndex,1);
+ d.exercises.splice(target,0,item);
+ save(); editExercises(pid,did); draggedIndex=null;
+}
+function removeExercise(pid,did,index){
+ const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+ d.exercises.splice(index,1); save(); editExercises(pid,did);
+}
+
+function addExercise(pid,did){
+ const d=data.programs.find(p=>p.id===pid).days.find(d=>d.id===did);
+ openModal(`<h2>Lägg till övning</h2><input id="newExercise" placeholder="Skriv egen övning"><div style="margin-top:10px">${EXERCISES.map(e=>`<div class="exercisePick" onclick="pickExercise('${esc(e)}','${pid}','${did}')"><span>${esc(e)}</span><b>＋</b></div>`).join("")}</div><div class="actions"><button onclick="pickExercise(document.getElementById('newExercise').value,'${pid}','${did}')">Lägg till egen</button><button class="secondary" onclick="closeModal()">Stäng</button></div>`);
+}
+function pickExercise(e,pid,did){e=e.trim();if(!e)return;data.programs.find(p=>p.id===pid).days.find(d=>d.id===did).exercises.push(e);save();closeModal();render()}
+function deleteProgram(pid){if(confirm("Ta bort programmet?")){data.programs=data.programs.filter(p=>p.id!==pid);save();render()}}
+function openModal(html){document.getElementById("sheet").innerHTML=html;document.getElementById("modal").classList.add("open")}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+render();
+</script>
+</body>
+</html>
