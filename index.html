@@ -30,13 +30,134 @@
 .calendarHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.calDow{font-size:11px;color:var(--muted);text-align:center;padding:4px 0;font-weight:700}.calDay{min-height:52px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:5px;text-align:center;cursor:pointer}.calDay.mutedDay{opacity:.35}.calDay.today{border:2px solid var(--accent)}.calNum{font-size:12px;color:var(--muted)}.calEmoji{font-size:20px;line-height:24px}.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:10px}.dayList{padding:10px 0;border-bottom:1px solid var(--border)}
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
-  </style>
+  
+/* v1.31 – jämn mobil layout */
+*{box-sizing:border-box}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{margin:0}
+button,input,select,textarea{font:inherit;max-width:100%}
+button{min-height:44px}
+main,.container,.app,.content{width:100%;max-width:760px;margin-left:auto;margin-right:auto}
+.card{width:100%;overflow:hidden}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions button{flex:0 0 auto}
+.exercisePick{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;width:100%}
+.sets{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 44px;gap:8px;align-items:center;width:100%}
+.sets input{width:100%;min-width:0}
+.head{min-width:0}
+.calDay{min-width:0;width:100%;overflow:hidden}
+.calEmoji{min-height:18px}
+.pill{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sheet{max-width:100vw}
+#sheet>div{max-width:calc(100vw - 24px);width:100%}
+input,select{width:100%;min-height:44px}
+label input[type="checkbox"],label input[type="radio"]{width:auto;min-height:auto}
+table{width:100%;table-layout:fixed}
+td,th{word-break:break-word}
+.version-badge{white-space:nowrap}
+
+@media (max-width:600px){
+  body{font-size:15px}
+  main,.container,.app,.content{padding-left:12px;padding-right:12px}
+  .card{padding:14px;margin-bottom:10px;border-radius:14px}
+  h1{font-size:24px}
+  h2{font-size:20px}
+  h3{font-size:17px}
+  .row{align-items:flex-start}
+  .row>button{width:auto}
+  .actions{width:100%}
+  .actions button{flex:1 1 140px;width:auto}
+  .exercisePick{align-items:flex-start}
+  .exercisePick>span{flex:1 1 100%;min-width:0}
+  .exercisePick .actions{width:auto;flex:0 0 auto}
+  .exercisePick .actions button{flex:0 0 auto;min-width:44px}
+  .sets{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 42px;gap:6px}
+  .sets input{padding:9px 7px}
+  .check{width:42px;min-width:42px;padding:0}
+  .calDay{padding:7px 3px;font-size:12px}
+  .calNum{font-size:14px}
+  .calEmoji{font-size:16px}
+  header{gap:8px}
+  header .actions{width:auto}
+  header .actions button{flex:0 0 auto}
+  nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  nav button{white-space:nowrap;flex:0 0 auto}
+  #sheet{padding:0 12px}
+  #sheet>div{max-height:90vh;overflow-y:auto}
+}
+
+@media (max-width:380px){
+  main,.container,.app,.content{padding-left:9px;padding-right:9px}
+  .card{padding:12px}
+  .sets{grid-template-columns:24px minmax(0,1fr) minmax(0,1fr) 38px;gap:5px}
+  .sets input{font-size:14px}
+  .actions button{flex-basis:100%}
+  .exercisePick .actions button{flex-basis:auto}
+}
+
+
+.delete-set{
+  min-width:42px;
+  width:42px;
+  height:42px;
+  padding:0;
+  border:1px solid #e2a0a0;
+  border-radius:10px;
+  background:#fff1f1;
+  color:#c62828;
+  font-weight:700;
+  font-size:20px;
+  line-height:1;
+}
+.delete-set:hover{background:#ffe1e1}
+
+
+/* v1.31 – vald dag i kalendern stannar markerad */
+.calDay.selected{
+  outline:3px solid currentColor;
+  outline-offset:-3px;
+  transform:translateY(-1px);
+  font-weight:700;
+}
+.calDay.selected .calNum{
+  font-weight:800;
+}
+
+
+/* v1.31 – kompaktare mobilknappar */
+@media (max-width:600px){
+  button{
+    min-height:40px;
+    padding:8px 12px;
+    font-size:14px;
+  }
+  .actions{
+    gap:6px;
+  }
+  .actions button{
+    flex:0 1 auto;
+    width:auto;
+    min-width:0;
+  }
+  .card > button{
+    width:auto;
+    max-width:100%;
+  }
+  nav button{
+    min-height:38px;
+    padding:7px 10px;
+    font-size:13px;
+  }
+}
+
+</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.13</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.31</div></div>
     <div class="actions" style="margin:0"><button class="secondary" onclick="showProfiles()">👤 <span id="activeProfileName"></span></button></div>
   </div>
 
@@ -125,7 +246,7 @@ if(Array.isArray(data.profiles)){
 }
 save();
 
-let currentTab="home", activeDay=null, workoutProfiles=["p1"], activeWorkoutDate=null;
+let currentTab="home", activeDay=null, workoutProfiles=["p1"], activeWorkoutDate=null, selectedCalendarDay=null;
 
 function save(){
   localStorage.setItem("traningslogg",JSON.stringify(data));
@@ -346,7 +467,7 @@ function renderHome(c){
           <b>🏋️ Dagens träning</b>
           <div class="sub">Välj direkt vilket pass du vill köra.</div>
         </div>
-        <button class="secondary" onclick="showTrainingMode()">👥 Träna tillsammans</button><button class="secondary" onclick="showBackdateWorkout()">📅 Efterregistrera</button>
+        <button class="secondary" onclick="showTrainingMode()">👥 Träna tillsammans</button><button onclick="startFreeWorkout()">🏋️ Freestyle</button><button class="secondary" onclick="showBackdateWorkout()">📅 Efterregistrera</button>
       </div>
     </div>
     ${data.programs.map(p=>`
@@ -417,9 +538,10 @@ function renderCalendar(c){
   for(let day=1;day<=last.getDate();day++){
     const key=`${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     const today=key===dateKey(new Date())?"today":"";
+    const selected=key===selectedCalendarDay?"selected":" selected-none";
     const emoji=qualityForDay(key);
     const people=peopleForDay(key);
-    cells+=`<button class="calDay ${today}" onclick="showCalendarDay('${key}')"><div class="calNum">${day}</div><div class="calEmoji">${emoji||"·"}</div>${people.length?`<div style="font-size:9px;line-height:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${people.map(p=>`👤 ${esc(p.name)}`).join("<br>")}</div>`:""}</button>`;
+    cells+=`<button class="calDay ${today} ${selected}" onclick="showCalendarDay('${key}')"><div class="calNum">${day}</div><div class="calEmoji">${emoji||"·"}</div>${people.length?`<div style="font-size:9px;line-height:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${people.map(p=>`👤 ${esc(p.name)}`).join("<br>")}</div>`:""}</button>`;
   }
   c.innerHTML=`<div class="card">
     <div class="calendarHead"><button class="secondary" onclick="changeMonth(-1)">‹</button><h2 style="margin:0;text-transform:capitalize">${monthName}</h2><button class="secondary" onclick="changeMonth(1)">›</button></div>
@@ -429,7 +551,28 @@ function renderCalendar(c){
   <div id="calendarDetail"></div>`;
 }
 function changeMonth(delta){calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+delta,1);render()}
+function qualityForPersonDay(key,profileId){
+  const logs=data.logs.filter(l=>dateKey(l.date)===key && l.profileId===profileId);
+  if(!logs.length)return "";
+  let score=0;
+  logs.forEach(l=>{
+    (l.sets||[]).forEach(s=>{
+      const reps=Number(s.reps)||0;
+      const kg=Number(s.kg)||0;
+      if(reps>=12)score+=3;
+      else if(reps>=8)score+=2;
+      else if(reps>=5)score+=1;
+      if(kg>0)score+=1;
+      if(l.isExtra)score+=2;
+    });
+  });
+  if(score>=18)return "🔥";
+  if(score>=12)return "💪";
+  if(score>=6)return "🙂";
+  return "😐";
+}
 function showCalendarDay(key){
+  selectedCalendarDay=key;
   const allLogs=data.logs.filter(l=>dateKey(l.date)===key);
   const box=document.getElementById("calendarDetail");
   if(!allLogs.length){
@@ -452,26 +595,72 @@ function showCalendarDay(key){
       const grouped={};
       logs.forEach(l=>{if(!grouped[l.exercise])grouped[l.exercise]=[];grouped[l.exercise].push(...l.sets)});
       return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-        <h3 style="margin:0 0 8px">👤 ${esc(person)}</h3>
+        <h3 style="margin:0 0 8px">👤 ${esc(person)} <span title="Passkvalitet" style="font-size:22px">${qualityForPersonDay(key,pid)}</span></h3>
         ${Object.entries(grouped).map(([ex,sets])=>`<div class="dayList"><b>${ex==="Övrigt"?"➕ ":"🏋️ "}${esc(ex)}</b><div class="muted">${ex==="Övrigt"?sets.map(s=>`${esc(s.name||"Övrigt")} · ${esc(s.time||"")}`).join(" · "):sets.map(s=>`${s.kg||0} kg × ${s.reps||0}`).join(" · ")}</div></div>`).join("")}
       </div>`;
     }).join("")}
   </div>`;
 }
 function startBackdateFromCalendar(key){
+  selectedCalendarDay=key;
   activeWorkoutDate=key;
   workoutProfiles=[data.activeProfile];
   openModal(`<h2>🏋️ Välj pass</h2><div class="sub">📅 ${new Date(key+"T12:00:00").toLocaleDateString("sv-SE")}</div>
     ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}','${key}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
 }
 function renderStats(c){
- const all = data.logs;
- const total = all.reduce((n,l)=>n+l.sets.length,0);
- const workouts = new Set(all.map(l=>l.date)).size;
- let best={};
- all.forEach(l=>l.sets.forEach(s=>{if(s.kg>0) best[l.exercise]=Math.max(best[l.exercise]||0,s.kg)}));
- c.innerHTML=`<div class="grid"><div class="stat"><span class="muted">Träningspass</span><b>${workouts}</b></div><div class="stat"><span class="muted">Registrerade set</span><b>${total}</b></div></div>
- <div class="card" style="margin-top:12px"><h3>Personbästa i vikt</h3>${Object.keys(best).length?Object.entries(best).sort((a,b)=>b[1]-a[1]).map(([e,v])=>`<div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>${esc(e)}</span><b>${v} kg</b></div>`).join(""):'<div class="empty">Registrera ditt första pass så visas utvecklingen här.</div>'}</div>`;
+  const profiles=data.profiles.filter(p=>data.logs.some(l=>l.profileId===p.id));
+
+  if(!profiles.length){
+    c.innerHTML=`<div class="card empty"><div style="font-size:42px">📈</div><h2>Ingen utveckling ännu</h2><div class="sub">Registrera ett pass så börjar din utveckling synas här.</div></div>`;
+    return;
+  }
+
+  c.innerHTML=`<div class="card">
+    <h2 style="margin:0">📈 Utveckling</h2>
+    <div class="sub">Varje persons vikter och reps visas separat.</div>
+  </div>
+  ${profiles.map(p=>{
+    const logs=data.logs.filter(l=>l.profileId===p.id);
+    const exercises=[...new Set(logs.map(l=>l.exercise))];
+
+    return `<div class="card">
+      <h2 style="margin:0">👤 ${esc(p.name)}</h2>
+      <div class="sub" style="margin-top:4px">${logs.length} registrerade övningsresultat</div>
+
+      ${exercises.map(ex=>{
+        const exLogs=logs.filter(l=>l.exercise===ex);
+        const latest=exLogs[exLogs.length-1];
+        const first=exLogs[0];
+
+        const latestBest=Math.max(...(latest.sets||[]).map(s=>Number(s.kg)||0));
+        const firstBest=Math.max(...(first.sets||[]).map(s=>Number(s.kg)||0));
+        const latestReps=Math.max(...(latest.sets||[]).map(s=>Number(s.reps)||0));
+        const firstReps=Math.max(...(first.sets||[]).map(s=>Number(s.reps)||0));
+
+        const weightChange=latestBest-firstBest;
+        const repsChange=latestReps-firstReps;
+
+        return `<div style="padding:12px 0;border-top:1px solid var(--border)">
+          <div class="row">
+            <b>${ex==="Övrigt"?"➕ ":"🏋️ "}${esc(ex)}</b>
+            <span class="pill">${exLogs.length} pass</span>
+          </div>
+          <div class="sub" style="margin-top:5px">
+            Senast: ${ex==="Övrigt"
+              ? (latest.sets||[]).map(s=>`${esc(s.name||"Övrigt")} · ${esc(s.time||"")}`).join(" · ")
+              : (latest.sets||[]).map(s=>`${s.kg||0} kg × ${s.reps||0}`).join(" · ")}
+          </div>
+          ${ex!=="Övrigt" ? `<div style="margin-top:6px">
+            ⚖️ Bästa vikt: <b>${latestBest||0} kg</b>
+            ${weightChange>0?`<span style="margin-left:6px">📈 +${weightChange} kg</span>`:weightChange<0?`<span style="margin-left:6px">📉 ${weightChange} kg</span>`:""}
+            · 🔢 Bästa reps: <b>${latestReps||0}</b>
+            ${repsChange>0?`<span style="margin-left:6px">📈 +${repsChange}</span>`:repsChange<0?`<span style="margin-left:6px">📉 ${repsChange}</span>`:""}
+          </div>`:""}
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("")}`;
 }
 function startWorkout(pid,did,chosenDate=null){
   activeDay={pid,did};
@@ -550,7 +739,7 @@ function addSet(ei,pi){
         <div>${n}</div>
         <input class="other-name" placeholder="T.ex. Plankan">
         <input class="other-time" placeholder="T.ex. 1:00">
-        <button class="check" onclick="this.parentElement.remove()">✓</button>
+        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove()">✕</button>
       </div>`);
   }else{
     box.insertAdjacentHTML("beforeend",`
@@ -558,7 +747,7 @@ function addSet(ei,pi){
         <div>${n}</div>
         <input class="weight-input" inputmode="decimal" placeholder="kg">
         <input class="reps-input" inputmode="numeric" placeholder="reps">
-        <button class="check" onclick="this.parentElement.remove()">✓</button>
+        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove()">✕</button>
       </div>`);
   }
 }
@@ -698,6 +887,142 @@ function chooseBackdateWorkout(){
   openModal(`<h2>🏋️ Välj pass</h2>
     <div class="sub" style="margin-bottom:10px">📅 ${new Date(date+"T12:00:00").toLocaleDateString("sv-SE")} · 👥 ${names.map(esc).join(", ")}</div>
     ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}','${date}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
+}
+function startFreeWorkout(){
+  activeDay={free:true};
+  activeWorkoutDate=dateKey(new Date());
+  workoutProfiles=[data.activeProfile];
+  renderFreeWorkout();
+}
+
+function renderFreeWorkout(){
+  const people=workoutProfiles.map(id=>data.profiles.find(x=>x.id===id)).filter(Boolean);
+  document.getElementById("content").innerHTML=`
+    <div class="row" style="margin-bottom:12px">
+      <button class="secondary" onclick="showTab('home')">← Tillbaka</button>
+      <span class="pill">🔥 Fritt pass</span>
+    </div>
+    <div class="card">
+      <h2 style="margin:0">🏋️ Freestyle</h2>
+      <div class="sub" style="margin-top:5px">Välj övningar allteftersom du tränar. Passet sparas utan att ändra något program.</div>
+      <div class="sub" style="margin-top:8px">👤 ${people.map(p=>esc(p.name)).join(" + ")}</div>
+      <label style="display:block;margin-top:10px">📅 Datum
+        <input id="freeWorkoutDate" type="date" value="${activeWorkoutDate}">
+      </label>
+    </div>
+    <div id="freeWorkoutExercises"></div>
+    <div class="card" style="text-align:center">
+      <button onclick="addFreeExercise()">➕ Lägg till övning</button>
+    </div>
+    <button style="width:100%;margin-top:8px" onclick="finishFreeWorkout()">✓ Spara pass</button>
+  `;
+}
+
+function addFreeExercise(){
+  const options=EXERCISES.filter(e=>e!=="Övrigt").map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  openModal(`<h2>➕ Lägg till övning</h2>
+    <label style="display:block;margin-top:10px">Övning
+      <select id="freeExerciseSelect" style="width:100%;padding:10px">
+        <option value="">Välj övning</option>${options}
+        <option value="__custom">✏️ Annan övning</option>
+        <option value="Övrigt">⏱️ Övrigt</option>
+      </select>
+    </label>
+    <div id="freeCustomWrap" style="display:none;margin-top:10px">
+      <input id="freeCustomName" placeholder="Vilken övning?">
+    </div>
+    <div class="actions">
+      <button onclick="addFreeExerciseToPage()">Lägg till</button>
+      <button class="secondary" onclick="closeModal()">Avbryt</button>
+    </div>`);
+  const sel=document.getElementById("freeExerciseSelect");
+  if(sel)sel.onchange=()=>{
+    document.getElementById("freeCustomWrap").style.display=sel.value==="__custom"?"block":"none";
+  };
+}
+
+function addFreeExerciseToPage(){
+  const sel=document.getElementById("freeExerciseSelect");
+  let ex=sel?.value||"";
+  if(ex==="__custom")ex=document.getElementById("freeCustomName")?.value.trim()||"";
+  if(!ex){alert("Välj eller skriv en övning.");return;}
+
+  const id="free_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);
+  const box=document.getElementById("freeWorkoutExercises");
+  const people=workoutProfiles.map(id=>data.profiles.find(x=>x.id===id)).filter(Boolean);
+
+  box.insertAdjacentHTML("beforeend",`
+    <div class="card free-exercise" data-free-exercise="${esc(ex)}" data-free-id="${id}">
+      <div class="row">
+        <div><b>${ex==="Övrigt"?"⏱️":"🏋️"} ${esc(ex)}</b><div class="sub">Fritt pass</div></div>
+        <button class="delete-set" title="Ta bort övning" onclick="this.closest('.free-exercise').remove()">✕</button>
+      </div>
+      ${people.map((p,pi)=>`
+        <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
+          <div class="row">
+            <b>👤 ${esc(p.name)}</b>
+            <button class="secondary" onclick="addFreeSet('${id}',${pi},'${ex==="Övrigt"?"other":"normal"}')">＋ Set</button>
+          </div>
+          <div id="free-sets-${id}-${pi}"></div>
+        </div>`).join("")}
+    </div>`);
+  people.forEach((_,pi)=>addFreeSet(id,pi,ex==="Övrigt"?"other":"normal"));
+  closeModal();
+}
+
+function addFreeSet(id,pi,type){
+  const box=document.getElementById(`free-sets-${id}-${pi}`);
+  if(!box)return;
+  const n=box.children.length+1;
+  if(type==="other"){
+    box.insertAdjacentHTML("beforeend",`
+      <div class="sets" data-set="${n}" style="margin-top:7px">
+        <div>${n}</div>
+        <input class="other-name" placeholder="Övning">
+        <input class="other-time" placeholder="Tid">
+        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+      </div>`);
+  }else{
+    box.insertAdjacentHTML("beforeend",`
+      <div class="sets" data-set="${n}" style="margin-top:7px">
+        <div>${n}</div>
+        <input class="weight-input" inputmode="decimal" placeholder="kg">
+        <input class="reps-input" inputmode="numeric" placeholder="reps">
+        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+      </div>`);
+  }
+}
+
+function finishFreeWorkout(){
+  const dateValue=document.getElementById("freeWorkoutDate")?.value||dateKey(new Date());
+  const date=new Date(dateValue+"T12:00:00").toISOString();
+
+  document.querySelectorAll(".free-exercise").forEach(card=>{
+    const ex=card.dataset.freeExercise;
+    const id=card.dataset.freeId;
+    workoutProfiles.forEach((profileId,pi)=>{
+      const rows=[...document.querySelectorAll(`#free-sets-${id}-${pi} > .sets`)];
+      if(ex==="Övrigt"){
+        rows.forEach(row=>{
+          const name=row.querySelector(".other-name")?.value.trim();
+          const time=row.querySelector(".other-time")?.value.trim();
+          if(name||time)data.logs.push({date,profileId,exercise:"Övrigt",sets:[{name:name||"Övrigt",time:time||""}],isExtra:true});
+        });
+      }else{
+        const sets=rows.map(row=>({
+          kg:parseFloat(row.querySelector(".weight-input")?.value)||0,
+          reps:parseInt(row.querySelector(".reps-input")?.value)||0
+        })).filter(s=>s.kg>0||s.reps>0);
+        if(sets.length)data.logs.push({date,profileId,exercise:ex,sets,isExtra:true});
+      }
+    });
+  });
+
+  save();
+  activeDay=null;
+  activeWorkoutDate=null;
+  workoutProfiles=[data.activeProfile];
+  showTab("calendar");
 }
 function showProfiles(){
   openModal(`<h2>👤 Profiler</h2>
