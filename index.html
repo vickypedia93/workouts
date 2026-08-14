@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.38 – jämn mobil layout */
+/* v1.39 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.38 – vald dag i kalendern stannar markerad */
+/* v1.39 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.38 – kompaktare mobilknappar */
+/* v1.39 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.38 – mobil layout och startsida */
+/* v1.39 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.38 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.39 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -276,13 +276,113 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   }
 }
 
+
+/* v1.39 – konsekvent knappjustering på mobil */
+@media (max-width:600px){
+  /* Header profile chip aligns to the same right edge as the content cards. */
+  header{
+    width:100%;
+    padding-left:0;
+    padding-right:0;
+  }
+  header > .actions{
+    margin-left:auto !important;
+    padding-right:0;
+  }
+
+  /* Top navigation: equal-width buttons, one row. */
+  nav:not(#bottomNav){
+    display:grid !important;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    width:100%;
+    margin:0;
+  }
+  nav:not(#bottomNav) button{
+    width:100%;
+    min-width:0;
+    min-height:64px;
+    padding:8px 4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+  }
+
+  /* Today's workout buttons share one consistent grid. */
+  .today-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+    width:100%;
+  }
+  .today-actions button{
+    width:100% !important;
+    min-width:0;
+    min-height:54px;
+    margin:0 !important;
+  }
+
+  /* Program action row: edit button stays aligned with program header. */
+  .program-card .program-header,
+  .program-card > .row:first-child{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .program-card .program-header .actions,
+  .program-card > .row:first-child .actions{
+    margin-left:auto;
+    flex:0 0 auto;
+  }
+
+  /* All program pass buttons have equal widths and sit on a clean line. */
+  .program-days{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    width:100%;
+  }
+  .program-days button{
+    width:100% !important;
+    min-width:0;
+    margin:0 !important;
+    min-height:52px;
+    padding:8px 4px;
+    white-space:nowrap;
+  }
+
+  /* Two-pass programs (e.g. CORE) stay centered. */
+  .program-days button:nth-child(1):last-child{
+    grid-column:auto;
+  }
+
+  /* Create-program button gets a fixed, centered footprint. */
+  .create-program,
+  .card > .create-program{
+    width:min(100%,300px) !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+  }
+
+  /* Compact, consistent action buttons everywhere else. */
+  .actions{
+    align-items:center;
+  }
+  .actions button{
+    margin:0;
+  }
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.38</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.39</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
