@@ -52,6 +52,31 @@
 <div id="modal" class="modal" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
 
 <script>
+
+const EXERCISE_TARGETS = {
+  "Marklyft":"3 × 5",
+  "Latsdrag":"3 × 8–10",
+  "Sittande kabelrodd":"3 × 8–10",
+  "t-bar rodd":"2 × 6–8",
+  "Face Pulls":"3 × 12–15",
+  "Hammercurl":"3 × 10–12",
+  "EZ-bar curl":"2 × 12–15",
+  "Maskinpress":"4 × 6–8",
+  "Lutande hantelpress":"3 × 8–10",
+  "Sittande axelpress":"3 × 8–10",
+  "Sidolyft":"3 × 6–10",
+  "Pec Deck":"3 × 12–15",
+  "Triceps Pushdown":"3 × 10–12",
+  "Overhead Triceps Extension":"2 × 12–15",
+  "Knäböj":"4 × 6–8",
+  "Rumänska marklyft (RDL)":"3 × 8–10",
+  "Bulgarian Split Squat":"3 × 8–10",
+  "Hip Thrust":"3 × 10–12",
+  "Lårcurl":"3 × 10–12",
+  "Benspark":"3 × 6–8",
+  "Vadpress (sittande)":"4 × 12–15"
+};
+
 const EXERCISES = ["Övrigt",
   "Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown",
   "Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl",
@@ -60,9 +85,9 @@ const EXERCISES = ["Övrigt",
 ];
 const defaultData = {
   programs:[{id:"ppl",name:"PPL",days:[
-    {id:"push",name:"PUSH",exercises:["Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown"]},
-    {id:"pull",name:"PULL",exercises:["Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl"]},
-    {id:"leg",name:"LEG",exercises:["Knäböj","RDL","Bulgarian split squat","Hip thrust","Benspark"]}
+    {id:"pull",name:"PULL",exercises:["Marklyft","Latsdrag","Sittande kabelrodd","t-bar rodd","Face Pulls","Hammercurl","EZ-bar curl"]},
+    {id:"push",name:"PUSH",exercises:["Maskinpress","Lutande hantelpress","Sittande axelpress","Sidolyft","Pec Deck","Triceps Pushdown","Overhead Triceps Extension"]},
+    {id:"legs",name:"LEGS",exercises:["Knäböj","Rumänska marklyft (RDL)","Bulgarian Split Squat","Hip Thrust","Lårcurl","Benspark","Vadpress (sittande)"]}
   ]}],
   logs:[]
 };
@@ -74,6 +99,23 @@ if(!Array.isArray(data.programs) || data.programs.length===0){
 }
 if(!data.activeProfile) data.activeProfile="p1";
 
+function migratePPL(){
+  const ppl=data.programs && data.programs.find(p=>p.id==="ppl");
+  if(!ppl)return;
+  const exact=[
+    {id:"pull",name:"PULL",exercises:["Marklyft","Latsdrag","Sittande kabelrodd","t-bar rodd","Face Pulls","Hammercurl","EZ-bar curl"]},
+    {id:"push",name:"PUSH",exercises:["Maskinpress","Lutande hantelpress","Sittande axelpress","Sidolyft","Pec Deck","Triceps Pushdown","Overhead Triceps Extension"]},
+    {id:"legs",name:"LEGS",exercises:["Knäböj","Rumänska marklyft (RDL)","Bulgarian Split Squat","Hip Thrust","Lårcurl","Benspark","Vadpress (sittande)"]}
+  ];
+  const oldNames=["Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown","Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl","Knäböj","RDL","Bulgarian split squat","Hip thrust","Benspark"];
+  if(ppl.days.some(d=>d.exercises.some(e=>oldNames.includes(e)))){
+    ppl.days=exact;
+    save();
+  }
+}
+migratePPL();
+
+
 if(Array.isArray(data.profiles)){
   const p1=data.profiles.find(x=>x.id==="p1");
   const p2=data.profiles.find(x=>x.id==="p2");
@@ -82,7 +124,7 @@ if(Array.isArray(data.profiles)){
 }
 save();
 
-let currentTab="home", activeDay=null, workoutProfiles=["p1"];
+let currentTab="home", activeDay=null, workoutProfiles=["p1"], activeWorkoutDate=null;
 
 function save(){localStorage.setItem("traningslogg",JSON.stringify(data))}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -123,7 +165,7 @@ function renderHome(c){
           <b>🏋️ Dagens träning</b>
           <div class="sub">Välj direkt vilket pass du vill köra.</div>
         </div>
-        <button class="secondary" onclick="showTrainingMode()">👥 Träna tillsammans</button>
+        <button class="secondary" onclick="showTrainingMode()">👥 Träna tillsammans</button><button class="secondary" onclick="showBackdateWorkout()">📅 Efterregistrera</button>
       </div>
     </div>
     ${data.programs.map(p=>`
@@ -232,6 +274,12 @@ function showCalendarDay(key){
     }).join("")}
   </div>`;
 }
+function startBackdateFromCalendar(key){
+  activeWorkoutDate=key;
+  workoutProfiles=[data.activeProfile];
+  openModal(`<h2>🏋️ Välj pass</h2><div class="sub">📅 ${new Date(key+"T12:00:00").toLocaleDateString("sv-SE")}</div>
+    ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}','${key}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
+}
 function renderStats(c){
  const all = data.logs;
  const total = all.reduce((n,l)=>n+l.sets.length,0);
@@ -241,8 +289,9 @@ function renderStats(c){
  c.innerHTML=`<div class="grid"><div class="stat"><span class="muted">Träningspass</span><b>${workouts}</b></div><div class="stat"><span class="muted">Registrerade set</span><b>${total}</b></div></div>
  <div class="card" style="margin-top:12px"><h3>Personbästa i vikt</h3>${Object.keys(best).length?Object.entries(best).sort((a,b)=>b[1]-a[1]).map(([e,v])=>`<div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)"><span>${esc(e)}</span><b>${v} kg</b></div>`).join(""):'<div class="empty">Registrera ditt första pass så visas utvecklingen här.</div>'}</div>`;
 }
-function startWorkout(pid,did){
+function startWorkout(pid,did,chosenDate=null){
   activeDay={pid,did};
+  activeWorkoutDate=chosenDate || dateKey(new Date());
   if(!Array.isArray(workoutProfiles) || workoutProfiles.length===0){
     workoutProfiles=[data.activeProfile];
   }
@@ -260,7 +309,7 @@ function renderWorkout(){
     </div>
     <div class="card">
       <h2 style="margin:0">🏋️ ${esc(d.name)}</h2>
-      <div class="sub">${new Date().toLocaleDateString("sv-SE")}</div>
+      <div class="sub">📅 <label>Träningsdatum <input id="workoutDate" type="date" value="${activeWorkoutDate||dateKey(new Date())}" style="width:auto;padding:5px 8px"></label></div>
       <div class="sub" style="margin-top:6px">👥 ${people.map(x=>esc(x.name)).join(" + ")}</div>
       <div class="sub" style="margin-top:4px">Alla valda personer fyller i sin egen vikt och sina egna reps samtidigt.</div>
     </div>
@@ -272,7 +321,7 @@ function renderWorkout(){
   w.innerHTML=d.exercises.map((ex,ei)=>`
     <div class="card">
       <div class="row">
-        <b>${ex==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(ex)}</b>
+        <div><b>${ex==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(ex)}</b>${EXERCISE_TARGETS[ex]?`<div class="sub">🎯 ${EXERCISE_TARGETS[ex]}</div>`:""}</div>
       </div>
       <div style="margin-top:12px">
         ${people.map((person,pi)=>`
@@ -328,7 +377,8 @@ function addSet(ei,pi){
 function finishWorkout(){
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
-  const date=new Date().toISOString();
+  const selected=document.getElementById("workoutDate")?.value || dateKey(new Date());
+  const date=new Date(selected+"T12:00:00").toISOString();
 
   workoutProfiles.forEach((profileId,pi)=>{
     d.exercises.forEach((ex,ei)=>{
@@ -361,6 +411,7 @@ function finishWorkout(){
 
   save();
   activeDay=null;
+  activeWorkoutDate=null;
   workoutProfiles=[data.activeProfile];
   showTab("calendar");
 }
@@ -371,6 +422,35 @@ function getPreviousForProfile(ex,profileId){
   if(!logs.length)return "";
   const last=logs[logs.length-1];
   return last.sets.map(s=>`${s.kg}×${s.reps}`).join(" · ");
+}
+function showBackdateWorkout(){
+  openModal(`<h2>📅 Efterregistrera träningspass</h2>
+    <div class="sub">Välj datum, personer och sedan passet.</div>
+    <label style="display:block;margin-top:12px">Datum
+      <input id="backdateDate" type="date" value="${dateKey(new Date())}">
+    </label>
+    <div style="margin-top:12px">
+      ${data.profiles.map(p=>`<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" style="width:auto" value="${p.id}" ${p.id===data.activeProfile?"checked":""}> 👤 ${esc(p.name)}
+      </label>`).join("")}
+    </div>
+    <div class="actions">
+      <button onclick="chooseBackdateWorkout()">Välj pass</button>
+      <button class="secondary" onclick="closeModal()">Avbryt</button>
+    </div>`);
+}
+function chooseBackdateWorkout(){
+  const date=document.getElementById("backdateDate").value;
+  const ids=[...document.querySelectorAll('#sheet input[type="checkbox"]:checked')].map(x=>x.value);
+  if(!date){alert("Välj ett datum.");return;}
+  if(!ids.length){alert("Välj minst en person.");return;}
+  workoutProfiles=ids;
+  activeWorkoutDate=date;
+  const names=ids.map(id=>(data.profiles.find(p=>p.id===id)||{}).name||id);
+  closeModal();
+  openModal(`<h2>🏋️ Välj pass</h2>
+    <div class="sub" style="margin-bottom:10px">📅 ${new Date(date+"T12:00:00").toLocaleDateString("sv-SE")} · 👥 ${names.map(esc).join(", ")}</div>
+    ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}','${date}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
 }
 function showProfiles(){
   openModal(`<h2>👤 Profiler</h2>
@@ -474,29 +554,42 @@ function addDay(pid){openModal(`<h2>Nytt träningspass</h2><input id="dayName" p
 function createDay(pid){const n=document.getElementById("dayName").value.trim();if(!n)return;data.programs.find(p=>p.id===pid).days.push({id:Date.now().toString(),name:n,exercises:[]});save();closeModal();render()}
 
 function editExercises(pid,did){
- const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
- openModal(`<h2>Redigera ${esc(d.name)}</h2>
- <div class="sub" style="margin-bottom:10px">Dra övningarna för att ändra ordningen. Du kan också ta bort en övning.</div>
- <div id="editList">${d.exercises.map((e,i)=>`<div class="exercisePick" draggable="true" data-i="${i}" ondragstart="dragStart(event)" ondragover="event.preventDefault()" ondrop="dropExercise(event,'${pid}','${did}')">
-   <span>☷ &nbsp;${esc(e)}</span><button class="danger" onclick="removeExercise('${pid}','${did}',${i})">Ta bort</button>
- </div>`).join("")}</div>
- <div class="actions"><button onclick="addExercise('${pid}','${did}')">＋ Lägg till övning</button><button class="secondary" onclick="closeModal();render()">Klar</button></div>`);
+  const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+  openModal(`<h2>✏️ Redigera ${esc(d.name)}</h2>
+    <div class="sub" style="margin-bottom:10px">Dra övningarna för att ändra ordning, eller använd ↑ ↓.</div>
+    <div id="editList">
+      ${d.exercises.map((e,i)=>`<div class="exercisePick" draggable="true" data-i="${i}"
+        ondragstart="dragStart(event)" ondragover="event.preventDefault()" ondrop="dropExercise(event,'${pid}','${did}')">
+        <span>☷ &nbsp;🏋️ ${esc(e)}</span>
+        <div class="actions" style="margin:0">
+          <button class="secondary" onclick="moveExercise('${pid}','${did}',${i},-1)">↑</button>
+          <button class="secondary" onclick="moveExercise('${pid}','${did}',${i},1)">↓</button>
+          <button class="danger" onclick="removeExercise('${pid}','${did}',${i})">Ta bort</button>
+        </div>
+      </div>`).join("")}
+    </div>
+    <div class="actions">
+      <button onclick="addExercise('${pid}','${did}')">＋ Lägg till övning</button>
+      <button class="secondary" onclick="closeModal();render()">Klar</button>
+    </div>`);
 }
 let draggedIndex=null;
 function dragStart(ev){draggedIndex=Number(ev.currentTarget.dataset.i);ev.dataTransfer.effectAllowed="move"}
 function dropExercise(ev,pid,did){
- const target=Number(ev.currentTarget.dataset.i);
- if(draggedIndex===null || draggedIndex===target)return;
- const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
- const [item]=d.exercises.splice(draggedIndex,1);
- d.exercises.splice(target,0,item);
- save(); editExercises(pid,did); draggedIndex=null;
+  const target=Number(ev.currentTarget.dataset.i);
+  if(draggedIndex===null || draggedIndex===target)return;
+  const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+  const [item]=d.exercises.splice(draggedIndex,1);
+  d.exercises.splice(target,0,item);
+  save(); editExercises(pid,did); draggedIndex=null;
 }
-function removeExercise(pid,did,index){
- const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
- d.exercises.splice(index,1); save(); editExercises(pid,did);
+function moveExercise(pid,did,index,delta){
+  const d=data.programs.find(p=>p.id===pid).days.find(x=>x.id===did);
+  const target=index+delta;
+  if(target<0 || target>=d.exercises.length)return;
+  [d.exercises[index],d.exercises[target]]=[d.exercises[target],d.exercises[index]];
+  save(); editExercises(pid,did);
 }
-
 function addExercise(pid,did){
  const d=data.programs.find(p=>p.id===pid).days.find(d=>d.id===did);
  openModal(`<h2>Lägg till övning</h2><input id="newExercise" placeholder="Skriv egen övning"><div style="margin-top:10px">${EXERCISES.map(e=>`<div class="exercisePick" onclick="pickExercise('${esc(e)}','${pid}','${did}')"><span>${esc(e)}</span><b>＋</b></div>`).join("")}</div><div class="actions"><button onclick="pickExercise(document.getElementById('newExercise').value,'${pid}','${did}')">Lägg till egen</button><button class="secondary" onclick="closeModal()">Stäng</button></div>`);
