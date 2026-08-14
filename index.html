@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.39 – jämn mobil layout */
+/* v1.40 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.39 – vald dag i kalendern stannar markerad */
+/* v1.40 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.39 – kompaktare mobilknappar */
+/* v1.40 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.39 – mobil layout och startsida */
+/* v1.40 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.39 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.40 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -277,7 +277,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.39 – konsekvent knappjustering på mobil */
+/* v1.40 – konsekvent knappjustering på mobil */
 @media (max-width:600px){
   /* Header profile chip aligns to the same right edge as the content cards. */
   header{
@@ -376,13 +376,26 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   }
 }
 
+
+/* v1.40 – utveckling per person/pass + Övrigt */
+.development-workout-toggle{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  text-align:left;
+}
+@media(max-width:600px){
+  .development-workout-toggle{min-height:48px;padding:9px 12px}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.39</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.40</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
@@ -715,7 +728,7 @@ function renderHome(c){
           <b>🏋️ Dagens träning</b>
           <div class="sub">Välj direkt vilket pass du vill köra.</div>
         </div>
-        <button class="secondary" onclick="showTrainingMode()">🏋️ Träna</button><button onclick="startFreeWorkout()">🏋️ Freestyle</button><button class="secondary" onclick="showBackdateWorkout()">📅 Efterregistrera</button>
+        <button class="secondary" onclick="showTrainingMode()">🏋️ Träna</button><button class="secondary" onclick="startFreeWorkout()">🏋️ Freestyle</button><button class="secondary" onclick="showBackdateWorkout()">📅 Efterregistrera</button>
       </div>
     </div>
     ${data.programs.map(p=>`
@@ -857,58 +870,95 @@ function startBackdateFromCalendar(key){
     ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}','${key}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
 }
 function renderStats(c){
-  const profiles=data.profiles.filter(p=>data.logs.some(l=>l.profileId===p.id));
-
+  const profiles=data.profiles;
   if(!profiles.length){
-    c.innerHTML=`<div class="card empty"><div style="font-size:42px">📈</div><h2>Ingen utveckling ännu</h2><div class="sub">Registrera ett pass så börjar din utveckling synas här.</div></div>`;
+    c.innerHTML='<div class="card empty"><div style="font-size:42px">📈</div><h2>Ingen utveckling ännu</h2><div class="sub">Lägg till en profil och registrera ett pass.</div></div>';
     return;
   }
 
-  c.innerHTML=`<div class="card">
-    <h2 style="margin:0">📈 Utveckling</h2>
-    <div class="sub">Varje persons vikter och reps visas separat.</div>
-  </div>
-  ${profiles.map(p=>{
+  let out='<div class="card"><h2 style="margin:0">📈 Utveckling</h2><div class="sub" style="margin-top:5px">Välj person och sedan träningspass för att se utvecklingen.</div></div>';
+
+  profiles.forEach(p=>{
     const logs=data.logs.filter(l=>l.profileId===p.id);
-    const exercises=[...new Set(logs.map(l=>l.exercise))];
+    const groups={};
 
-    return `<div class="card">
-      <h2 style="margin:0">👤 ${esc(p.name)}</h2>
-      <div class="sub" style="margin-top:4px">${logs.length} registrerade övningsresultat</div>
+    logs.forEach(l=>{
+      let matchedProgram=null, matchedDay=null;
+      data.programs.forEach(program=>{
+        program.days.forEach(day=>{
+          if(day.exercises.some(ex=>{
+            const name=typeof ex==="string"?ex:ex.name;
+            return name===l.exercise;
+          })){
+            matchedProgram=program;
+            matchedDay=day;
+          }
+        });
+      });
+      const key=matchedDay ? "program:"+matchedProgram.id+":"+matchedDay.id : "other";
+      if(!groups[key]) groups[key]={type:matchedDay?"program":"other",program:matchedProgram,day:matchedDay,logs:[]};
+      groups[key].logs.push(l);
+    });
 
-      ${exercises.map(ex=>{
-        const exLogs=logs.filter(l=>l.exercise===ex);
-        const latest=exLogs[exLogs.length-1];
-        const first=exLogs[0];
+    out+='<div class="card development-person"><h2 style="margin:0">👤 '+esc(p.name)+'</h2><div class="sub" style="margin-top:4px">'+logs.length+' registrerade övningsresultat</div>';
 
-        const latestBest=Math.max(...(latest.sets||[]).map(s=>Number(s.kg)||0));
-        const firstBest=Math.max(...(first.sets||[]).map(s=>Number(s.kg)||0));
-        const latestReps=Math.max(...(latest.sets||[]).map(s=>Number(s.reps)||0));
-        const firstReps=Math.max(...(first.sets||[]).map(s=>Number(s.reps)||0));
+    const groupEntries=Object.values(groups);
+    if(!groupEntries.length){
+      out+='<div class="sub" style="margin-top:12px">Inga registrerade pass ännu.</div>';
+    } else {
+      groupEntries.forEach(g=>{
+        const title=g.type==="program"
+          ? '📋 '+esc(g.program.name)+' · '+esc(g.day.name)
+          : '➕ Övrigt';
+        const gid='dev_'+Math.random().toString(36).slice(2,10);
 
-        const weightChange=latestBest-firstBest;
-        const repsChange=latestReps-firstReps;
+        out+='<div class="development-workout" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">';
+        out+='<button class="secondary development-workout-toggle" onclick="toggleDevelopmentWorkout(this)"><span>'+title+'</span><span>⌄</span></button>';
+        out+='<div class="development-workout-body" style="display:none;margin-top:8px">';
 
-        return `<div style="padding:12px 0;border-top:1px solid var(--border)">
-          <div class="row">
-            <b>${ex==="Övrigt"?"➕ ":"🏋️ "}${esc(ex)}</b>
-            <span class="pill">${exLogs.length} pass</span>
-          </div>
-          <div class="sub" style="margin-top:5px">
-            Senast: ${ex==="Övrigt"
-              ? (latest.sets||[]).map(s=>`${esc(s.name||"Övrigt")} · ${esc(s.time||"")}`).join(" · ")
-              : (latest.sets||[]).map(s=>`${s.kg||0} kg × ${s.reps||0}`).join(" · ")}
-          </div>
-          ${ex!=="Övrigt" ? `<div style="margin-top:6px">
-            ⚖️ Bästa vikt: <b>${latestBest||0} kg</b>
-            ${weightChange>0?`<span style="margin-left:6px">📈 +${weightChange} kg</span>`:weightChange<0?`<span style="margin-left:6px">📉 ${weightChange} kg</span>`:""}
-            · 🔢 Bästa reps: <b>${latestReps||0}</b>
-            ${repsChange>0?`<span style="margin-left:6px">📈 +${repsChange}</span>`:repsChange<0?`<span style="margin-left:6px">📉 ${repsChange}</span>`:""}
-          </div>`:""}
-        </div>`;
-      }).join("")}
-    </div>`;
-  }).join("")}`;
+        [...new Set(g.logs.map(l=>l.exercise))].forEach(ex=>{
+          const exLogs=g.logs.filter(l=>l.exercise===ex);
+          const latest=exLogs[exLogs.length-1], first=exLogs[0];
+          const isOther=ex==="Övrigt";
+          const latestBest=Math.max(...(latest.sets||[]).map(s=>Number(s.kg)||0));
+          const firstBest=Math.max(...(first.sets||[]).map(s=>Number(s.kg)||0));
+          const latestReps=Math.max(...(latest.sets||[]).map(s=>Number(s.reps)||0));
+          const firstReps=Math.max(...(first.sets||[]).map(s=>Number(s.reps)||0));
+          const wc=latestBest-firstBest, rc=latestReps-firstReps;
+
+          out+='<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div><b>'+ (isOther?'➕':'🏋️') +' '+esc(ex)+'</b></div>';
+          if(isOther){
+            const details=exLogs.map(l=>(l.sets||[]).map(s=>esc(s.name||"Övrigt")+' · '+esc(s.time||"")).join(" · ")).join(" | ");
+            out+='<div class="sub" style="margin-top:4px">'+details+'</div>';
+          }else{
+            out+='<div class="sub" style="margin-top:4px">Senast: '+(latest.sets||[]).map(s=>(s.kg||0)+' kg × '+(s.reps||0)).join(" · ")+'</div>';
+            out+='<div style="margin-top:5px">⚖️ Bästa vikt: <b>'+ (latestBest||0) +' kg</b>';
+            if(wc>0) out+='<span style="margin-left:6px">📈 +'+wc+' kg</span>';
+            else if(wc<0) out+='<span style="margin-left:6px">📉 '+wc+' kg</span>';
+            out+=' · 🔢 Bästa reps: <b>'+ (latestReps||0) +'</b>';
+            if(rc>0) out+='<span style="margin-left:6px">📈 +'+rc+'</span>';
+            else if(rc<0) out+='<span style="margin-left:6px">📉 '+rc+'</span>';
+            out+='</div>';
+          }
+          out+='</div>';
+        });
+
+        out+='</div></div>';
+      });
+    }
+    out+='</div>';
+  });
+
+  c.innerHTML=out;
+}
+
+function toggleDevelopmentWorkout(btn){
+  const body=btn.parentElement.querySelector(".development-workout-body");
+  if(!body)return;
+  const open=body.style.display!=="none";
+  body.style.display=open?"none":"block";
+  const arrow=btn.querySelector("span:last-child");
+  if(arrow)arrow.textContent=open?"⌄":"⌃";
 }
 function startWorkout(pid,did,chosenDate=null){
   activeDay={pid,did};
@@ -1413,7 +1463,7 @@ function openTogetherWorkoutChooser(){
     <div class="card" style="margin:8px 0">
       <div class="row"><b>🏋️ Freestyle</b><span class="pill">Fritt pass</span></div>
       <div class="sub" style="margin-top:4px">Alla valda personer tränar tillsammans, men ni väljer övningar fritt.</div>
-      <button style="margin-top:8px" onclick="closeModal();startTogetherFreestyle()">🏋️ Freestyle</button>
+      <button class="secondary" style="margin-top:8px" onclick="closeModal();startTogetherFreestyle()">🏋️ Freestyle</button>
     </div>
     <button class="secondary" onclick="closeModal()">Avbryt</button>`);
 }
