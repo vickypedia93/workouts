@@ -35,7 +35,7 @@
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen.</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.13</div></div>
     <div class="actions" style="margin:0"><button class="secondary" onclick="showProfiles()">👤 <span id="activeProfileName"></span></button><button onclick="showCreateProgram()">＋ Program</button></div>
   </div>
 
@@ -88,11 +88,11 @@ function save(){localStorage.setItem("traningslogg",JSON.stringify(data))}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function showTab(tab){currentTab=tab; document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active")); document.getElementById("nav"+tab[0].toUpperCase()+tab.slice(1)).classList.add("active"); render()}
 function render(){
+  const ap=data.profiles.find(x=>x.id===data.activeProfile) || data.profiles[0];
   const profileEl=document.getElementById("activeProfileName");
-  if(profileEl){
-    const ap=data.profiles.find(x=>x.id===data.activeProfile) || data.profiles[0];
-    profileEl.textContent=ap ? ap.name : "Profil";
-  }
+  if(profileEl) profileEl.textContent=ap ? ap.name : "Profil";
+  const homeProfileEl=document.getElementById("homeProfileName");
+  if(homeProfileEl) homeProfileEl.textContent=ap ? ap.name : "Profil";
   const c=document.getElementById("content");
   if(currentTab==="home") renderHome(c); else if(currentTab==="programs") renderPrograms(c); else if(currentTab==="calendar") renderCalendar(c); else renderStats(c);
 }
@@ -108,6 +108,15 @@ function renderHome(c){
   }
 
   c.innerHTML = `
+    <div class="card" id="homeProfileCard">
+      <div class="row">
+        <div>
+          <b>👤 Aktiv profil</b>
+          <div class="sub"><span id="homeProfileName"></span></div>
+        </div>
+        <button class="secondary" onclick="showProfiles()">Byt profil</button>
+      </div>
+    </div>
     <div class="card">
       <div class="row">
         <div>
