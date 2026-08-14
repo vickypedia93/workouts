@@ -243,7 +243,9 @@ function renderStats(c){
 }
 function startWorkout(pid,did){
   activeDay={pid,did};
-  workoutProfiles=[data.activeProfile];
+  if(!Array.isArray(workoutProfiles) || workoutProfiles.length===0){
+    workoutProfiles=[data.activeProfile];
+  }
   renderWorkout();
 }
 function renderWorkout(){
@@ -444,9 +446,13 @@ function showTrainingMode(){
  <div class="actions"><button onclick="saveTrainingMode()">Starta</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`);
 }
 function saveTrainingMode(){
- const ids=[...document.querySelectorAll('#sheet input[type="checkbox"]:checked')].map(x=>x.value);
- workoutProfiles=ids.length?ids:[data.activeProfile];closeModal();
- openModal(`<h2>Välj pass</h2>${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
+  const ids=[...document.querySelectorAll('#sheet input[type="checkbox"]:checked')].map(x=>x.value);
+  workoutProfiles=ids.length?ids:[data.activeProfile];
+  const names=workoutProfiles.map(id=>((data.profiles.find(p=>p.id===id)||{}).name||id));
+  closeModal();
+  openModal(`<h2>🏋️ Välj pass</h2>
+    <div class="sub" style="margin-bottom:10px">👥 ${names.length} personer: ${names.map(esc).join(", ")}</div>
+    ${data.programs.flatMap(p=>p.days.map(d=>`<button class="secondary" style="width:100%;margin:5px 0" onclick="closeModal();startWorkout('${p.id}','${d.id}')">${esc(p.name)} – ${esc(d.name)}</button>`)).join("")}`);
 }
 function showCreateProgram(){
  openModal(`<h2>Skapa träningsprogram</h2><input id="programName" placeholder="T.ex. PPL eller Upper/Lower"><div class="actions"><button onclick="createProgram()">Skapa</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`);
