@@ -36,7 +36,7 @@
 <div class="app">
   <div class="top">
     <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.13</div></div>
-    <div class="actions" style="margin:0"><button class="secondary" onclick="showProfiles()">👤 <span id="activeProfileName"></span></button><button onclick="showCreateProgram()">＋ Program</button></div>
+    <div class="actions" style="margin:0"><button class="secondary" onclick="showProfiles()">👤 <span id="activeProfileName"></span></button></div>
   </div>
 
   <div class="nav">
@@ -185,6 +185,9 @@ function renderHome(c){
         </div>
       </div>
     `).join("")}
+    <div class="card" style="text-align:center">
+      <button onclick="showCreateProgram()">＋ Skapa program</button>
+    </div>
   `;
 }
 function renderPrograms(c){
