@@ -262,9 +262,9 @@ function renderWorkout(){
       <h2 style="margin:0">🏋️ ${esc(d.name)}</h2>
       <div class="sub">${new Date().toLocaleDateString("sv-SE")}</div>
       <div class="sub" style="margin-top:6px">👥 ${people.map(x=>esc(x.name)).join(" + ")}</div>
-      <div class="sub" style="margin-top:4px">Varje person fyller i sin egen vikt och sina egna reps.</div>
+      <div class="sub" style="margin-top:4px">Alla valda personer fyller i sin egen vikt och sina egna reps samtidigt.</div>
     </div>
-    <div id="workout"></div>
+    <div class="card" style="background:#f7f8f9"><b>✍️ Registrera samtidigt</b><div class="sub">Varje person har sina egna kg, reps och set under samma övning.</div></div><div id="workout"></div>
     <button style="width:100%;margin-top:8px" onclick="finishWorkout()">✓ Avsluta pass</button>
   `;
 
@@ -441,13 +441,25 @@ function deleteProfile(id){
   showProfiles();
 }
 function showTrainingMode(){
- openModal(`<h2>Träna tillsammans</h2><div class="sub">Välj vilka som tränar i samma pass.</div>
- ${data.profiles.map(p=>`<label style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)"><input type="checkbox" style="width:auto" value="${p.id}" ${workoutProfiles.includes(p.id)?"checked":""}> ${esc(p.name)}</label>`).join("")}
- <div class="actions"><button onclick="saveTrainingMode()">Starta</button><button class="secondary" onclick="closeModal()">Avbryt</button></div>`);
+  const selected = new Set(workoutProfiles && workoutProfiles.length ? workoutProfiles : data.profiles.map(p=>p.id));
+  openModal(`<h2>👥 Träna tillsammans</h2>
+  <div class="sub">Alla registrerade personer är valda från början. Avmarkera den som inte tränar idag.</div>
+  ${data.profiles.map(p=>`<label style="display:flex;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--border)">
+    <input type="checkbox" style="width:auto" value="${p.id}" ${selected.has(p.id)?"checked":""}>
+    <span>👤 ${esc(p.name)}</span>
+  </label>`).join("")}
+  <div class="actions">
+    <button onclick="saveTrainingMode()">Starta pass med valda personer</button>
+    <button class="secondary" onclick="closeModal()">Avbryt</button>
+  </div>`);
 }
 function saveTrainingMode(){
   const ids=[...document.querySelectorAll('#sheet input[type="checkbox"]:checked')].map(x=>x.value);
-  workoutProfiles=ids.length?ids:[data.activeProfile];
+  if(!ids.length){
+    alert("Välj minst en person.");
+    return;
+  }
+  workoutProfiles=ids;
   const names=workoutProfiles.map(id=>((data.profiles.find(p=>p.id===id)||{}).name||id));
   closeModal();
   openModal(`<h2>🏋️ Välj pass</h2>
