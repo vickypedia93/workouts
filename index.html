@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.48 – jämn mobil layout */
+/* v1.49 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.48 – vald dag i kalendern stannar markerad */
+/* v1.49 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.48 – kompaktare mobilknappar */
+/* v1.49 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.48 – mobil layout och startsida */
+/* v1.49 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.48 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.49 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -277,7 +277,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.48 – konsekvent knappjustering på mobil */
+/* v1.49 – konsekvent knappjustering på mobil */
 @media (max-width:600px){
   /* Header profile chip aligns to the same right edge as the content cards. */
   header{
@@ -377,7 +377,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.48 – utveckling per person/pass + Övrigt */
+/* v1.49 – utveckling per person/pass + Övrigt */
 .development-workout-toggle{
   width:100%;
   display:flex;
@@ -390,7 +390,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.48 – profilknappen längst ut till höger på mobilen */
+/* v1.49 – profilknappen längst ut till höger på mobilen */
 @media(max-width:600px){
   header{
     width:100%;
@@ -481,13 +481,15 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   }
 }
 
+
+.exercisePick{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}.exercisePick:hover{background:#f7f8f9}@media(max-width:600px){#exerciseSearch{font-size:16px}.exercisePick{min-height:46px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.48</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.49</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
@@ -541,10 +543,18 @@ const EXERCISE_TARGETS = {
 };
 
 const EXERCISES = ["Övrigt",
-  "Bänkpress","Lutande hantelpress","Axelpress","Sidolyft","Triceps pushdown",
-  "Latsdrag","Sittande rodd","Face pulls","Bicepscurl","Hammercurl",
-  "Knäböj","RDL","Bulgarian split squat","Hip thrust","Benspark","Lårcurl","Vadpress",
-  "Pull-ups","Chest-supported row","Cable fly","Leg press","Leg extension"
+  "Bänkpress","Lutande bänkpress","Lutande hantelpress","Hantelpress","Maskinpress",
+  "Sittande axelpress","Militärpress","Arnoldpress","Sidolyft","Omvända flyes","Pec Deck",
+  "Cable fly","Dips","Push-ups","Triceps Pushdown","Overhead Triceps Extension","Fransk press",
+  "Marklyft","Rumänska marklyft (RDL)","Sumomarklyft","Rack Pull","Good Morning",
+  "Knäböj","Frontböj","Hack Squat","Leg press","Bulgarian Split Squat","Utfall","Gående utfall",
+  "Hip Thrust","Glute Bridge","Lårcurl","Benspark","Vadpress (stående)","Vadpress (sittande)",
+  "Latsdrag","Pull-ups","Chins","Assisted Pull-ups","Sittande kabelrodd","T-bar rodd",
+  "Chest-supported row","Enarms hantelrodd","Face Pulls","Straight-arm Pulldown",
+  "Hammercurl","EZ-bar curl","Bicepscurl","Preacher Curl","Cable Curl","Concentration Curl",
+  "Dead Bug","Cable Crunch","RKC Plank","Pallof Press","Bird Dog","Hanging Knee Raise",
+  "Reverse Crunch","Side Plank","Ab Wheel Rollout","Hanging Leg Raise","Leg Raise",
+  "Russian Twist","Back Extension","Farmer's Walk","Shrugs","Wrist Curl"
 ];
 const defaultData = {
   programs:[
@@ -559,7 +569,22 @@ const defaultData = {
   ]}],
   logs:[]
 };
-let data = JSON.parse(localStorage.getItem("traningslogg") || "null") || defaultData;
+let data = JSON.parse(localStorage.getItem("traningslogg") || "null") || defaultData;const BUILTIN_EXERCISE_BANK = EXERCISES.filter(e=>e!=="Övrigt");
+if(!data.exerciseBank || !Array.isArray(data.exerciseBank)) data.exerciseBank=[];
+data.exerciseBank=[...new Set([...BUILTIN_EXERCISE_BANK,...data.exerciseBank].map(x=>String(x).trim()).filter(Boolean))];
+function getExerciseBank(){ return [...new Set(data.exerciseBank||[])].sort((a,b)=>a.localeCompare(b,"sv")); }
+function saveExerciseToBank(name){
+  name=String(name||"").trim();
+  if(!name || name==="Övrigt")return name;
+  if(!Array.isArray(data.exerciseBank))data.exerciseBank=[];
+  const existing=data.exerciseBank.find(x=>x.toLowerCase()===name.toLowerCase());
+  if(existing)return existing;
+  data.exerciseBank.push(name);
+  data.exerciseBank.sort((a,b)=>a.localeCompare(b,"sv"));
+  save();
+  return name;
+}
+
 if(!data.profiles) data.profiles=[{id:"p1",name:"Vicky"},{id:"p2",name:"Viktor"}];
 if(!Array.isArray(data.programs) || data.programs.length===0){
   data.programs=defaultData.programs;
@@ -1266,7 +1291,7 @@ function addSet(ei,pi){
   }
 }
 function addExtraExerciseDuringWorkout(){
-  const options=EXERCISES.filter(e=>e!=="Övrigt").map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  const options=getExerciseBank().map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
   openModal(`<h2>➕ Extra övning</h2>
     <div class="sub">Den här övningen läggs bara till på dagens pass. Ditt program ändras inte.</div>
     <label style="display:block;margin-top:12px">Övning
@@ -1289,7 +1314,11 @@ function addSelectedExtraExercise(){
   const sel=document.getElementById("extraExerciseSelect");
   let ex=sel?.value||"";
   if(ex==="__custom")ex=document.getElementById("customExtraName")?.value.trim()||"";
+  if(ex==="Övrigt"){
+    ex=(prompt("Vilken övning är det?")||"").trim();
+  }
   if(!ex){alert("Välj eller skriv en övning.");return;}
+  ex=saveExerciseToBank(ex);
 
   const w=document.getElementById("workout");
   const ei=999000+Date.now();
@@ -1545,7 +1574,7 @@ function renderFreeWorkout(){
 }
 
 function addFreeExercise(){
-  const options=EXERCISES.filter(e=>e!=="Övrigt").map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  const options=getExerciseBank().map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
   openModal(`<h2>➕ Lägg till övning</h2>
     <label style="display:block;margin-top:10px">Övning
       <select id="freeExerciseSelect" style="width:100%;padding:10px">
@@ -1811,11 +1840,57 @@ function moveExercise(pid,did,index,delta){
   [d.exercises[index],d.exercises[target]]=[d.exercises[target],d.exercises[index]];
   save(); editExercises(pid,did);
 }
-function addExercise(pid,did){
- const d=data.programs.find(p=>p.id===pid).days.find(d=>d.id===did);
- openModal(`<h2>Lägg till övning</h2><input id="newExercise" placeholder="Skriv egen övning"><div style="margin-top:10px">${EXERCISES.map(e=>`<div class="exercisePick" onclick="pickExercise('${esc(e)}','${pid}','${did}')"><span>${esc(e)}</span><b>＋</b></div>`).join("")}</div><div class="actions"><button onclick="pickExercise(document.getElementById('newExercise').value,'${pid}','${did}')">Lägg till egen</button><button class="secondary" onclick="closeModal()">Stäng</button></div>`);
+function exercisePickerList(items,pid,did){
+  if(!items.length)return `<div class="sub" style="padding:12px">Inga övningar matchar.</div>`;
+  return items.map(e=>`<div class="exercisePick" onclick="pickExercise('${esc(e)}','${pid}','${did}')"><span>🏋️ ${esc(e)}</span><b>＋</b></div>`).join("");
 }
-function pickExercise(e,pid,did){e=e.trim();if(!e)return;data.programs.find(p=>p.id===pid).days.find(d=>d.id===did).exercises.push(e);save();closeModal();render()}
+function addExercise(pid,did){
+  openModal(`<h2>＋ Lägg till övning</h2>
+    <div class="sub">Sök i övningsbanken. Listan filtreras direkt medan du skriver.</div>
+    <input id="exerciseSearch" autocomplete="off" placeholder="🔎 Sök övning..." style="width:100%;padding:12px;margin-top:10px;border:1px solid var(--border);border-radius:10px">
+    <div id="exerciseResults" style="margin-top:10px;max-height:48vh;overflow:auto">${exercisePickerList(getExerciseBank(),pid,did)}</div>
+    <div class="actions" style="margin-top:10px">
+      <button class="secondary" onclick="showCustomExercise('${pid}','${did}')">➕ Ny övning</button>
+      <button class="secondary" onclick="closeModal()">Stäng</button>
+    </div>`);
+  const input=document.getElementById("exerciseSearch");
+  if(input){
+    input.oninput=()=>filterExercisePicker(pid,did);
+    input.focus();
+  }
+}
+function filterExercisePicker(pid,did){
+  const q=(document.getElementById("exerciseSearch")?.value||"").trim().toLocaleLowerCase("sv");
+  const items=getExerciseBank().filter(e=>e.toLocaleLowerCase("sv").startsWith(q));
+  const box=document.getElementById("exerciseResults");
+  if(box)box.innerHTML=exercisePickerList(items,pid,did);
+}
+function showCustomExercise(pid,did){
+  openModal(`<h2>➕ Lägg till ny övning</h2>
+    <div class="sub">Övningen sparas i banken och finns att söka fram nästa gång.</div>
+    <input id="customExerciseName" placeholder="T.ex. Zercher Squat" style="width:100%;padding:12px;margin-top:12px;border:1px solid var(--border);border-radius:10px">
+    <div class="actions">
+      <button onclick="saveCustomExercise('${pid}','${did}')">Spara övning</button>
+      <button class="secondary" onclick="addExercise('${pid}','${did}')">Tillbaka</button>
+    </div>`);
+  document.getElementById("customExerciseName")?.focus();
+}
+function saveCustomExercise(pid,did){
+  const name=(document.getElementById("customExerciseName")?.value||"").trim();
+  if(!name){alert("Skriv namnet på övningen.");return;}
+  if(name==="Övrigt"){alert("Ange den faktiska övningen.");return;}
+  const saved=saveExerciseToBank(name);
+  const d=data.programs.find(p=>p.id===pid).days.find(d=>d.id===did);
+  if(!d.exercises.some(e=>e.toLowerCase()===saved.toLowerCase()))d.exercises.push(saved);
+  save();closeModal();render();
+}
+function pickExercise(e,pid,did){
+  e=String(e||"").trim();
+  if(!e || e==="Övrigt")return showCustomExercise(pid,did);
+  const saved=saveExerciseToBank(e);
+  data.programs.find(p=>p.id===pid).days.find(d=>d.id===did).exercises.push(saved);
+  save();closeModal();render();
+}
 function deleteProgram(pid){if(confirm("Ta bort programmet?")){data.programs=data.programs.filter(p=>p.id!==pid);save();render()}}
 function openModal(html){document.getElementById("sheet").innerHTML=html;document.getElementById("modal").classList.add("open")}
 function closeModal(){document.getElementById("modal").classList.remove("open")}
