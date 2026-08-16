@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.42 – jämn mobil layout */
+/* v1.45 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.42 – vald dag i kalendern stannar markerad */
+/* v1.45 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.42 – kompaktare mobilknappar */
+/* v1.45 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.42 – mobil layout och startsida */
+/* v1.45 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.42 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.45 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -277,7 +277,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.42 – konsekvent knappjustering på mobil */
+/* v1.45 – konsekvent knappjustering på mobil */
 @media (max-width:600px){
   /* Header profile chip aligns to the same right edge as the content cards. */
   header{
@@ -377,7 +377,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.42 – utveckling per person/pass + Övrigt */
+/* v1.45 – utveckling per person/pass + Övrigt */
 .development-workout-toggle{
   width:100%;
   display:flex;
@@ -390,7 +390,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.42 – profilknappen längst ut till höger på mobilen */
+/* v1.45 – profilknappen längst ut till höger på mobilen */
 @media(max-width:600px){
   header{
     width:100%;
@@ -415,13 +415,57 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   }
 }
 
+
+.previous-performance{
+  margin-top:7px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:var(--muted,#f4f6f7);
+  font-size:13px;
+  line-height:1.45;
+}
+.progression-target{margin-top:4px;font-weight:600}
+@media(max-width:600px){
+  .previous-performance{font-size:12px;padding:7px 9px}
+}
+
+
+.workout-summary-person{
+  margin-top:14px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+}
+.summary-targets{
+  margin-top:6px;
+  display:grid;
+  gap:5px;
+  font-size:13px;
+}
+@media(max-width:600px){
+  .workout-summary-person{padding:12px}
+}
+
+
+.smart-weight{
+  margin-top:7px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:var(--muted,#f4f6f7);
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:600px){
+  .smart-weight{font-size:12px;padding:7px 9px}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.42</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.45</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
@@ -986,6 +1030,111 @@ function toggleDevelopmentWorkout(btn){
   const arrow=btn.querySelector("span:last-child");
   if(arrow)arrow.textContent=open?"⌄":"⌃";
 }
+
+
+const RELATED_EXERCISES = {
+  "Lutande hantelpress":["Bänkpress","Maskinpress"],
+  "Bänkpress":["Lutande hantelpress","Maskinpress","Pec Deck"],
+  "Maskinpress":["Bänkpress","Lutande hantelpress"],
+  "Knäböj":["Hack Squat","Benspark"],
+  "Hack Squat":["Knäböj","Benspark"],
+  "Rumänska marklyft (RDL)":["Marklyft","Lårcurl"],
+  "Marklyft":["Rumänska marklyft (RDL)","T-bar rodd"],
+  "Latsdrag":["Pull-ups","Sittande kabelrodd"],
+  "Sittande kabelrodd":["Latsdrag","T-bar rodd"],
+  "T-bar rodd":["Sittande kabelrodd","Marklyft"],
+  "Hammercurl":["EZ-barcurl"],
+  "EZ-barcurl":["Hammercurl"],
+  "Triceps Pushdown":["Overhead Triceps Extension"],
+  "Overhead Triceps Extension":["Triceps Pushdown"],
+  "Hanging Knee Raise":["Hanging Leg Raise","Reverse Crunch"],
+  "Hanging Leg Raise":["Hanging Knee Raise","Reverse Crunch"],
+  "Reverse Crunch":["Hanging Knee Raise","Hanging Leg Raise"]
+};
+
+function personExerciseMax(profileId, exercise){
+  const logs=data.logs.filter(l=>l.profileId===profileId && l.exercise===exercise);
+  let max=0;
+  logs.forEach(l=>(l.sets||[]).forEach(s=>{max=Math.max(max,Number(s.kg)||0)}));
+  return max;
+}
+
+function smartWeightSuggestion(profileId, exercise, percent){
+  const ownMax=personExerciseMax(profileId,exercise);
+  if(ownMax>0){
+    return {
+      weight: roundTrainingWeight(ownMax*(Number(percent)||0)/100),
+      source:"eget PB",
+      basedOn:exercise
+    };
+  }
+
+  const related=RELATED_EXERCISES[exercise]||[];
+  for(const candidate of related){
+    const max=personExerciseMax(profileId,candidate);
+    if(max>0){
+      // Conservative default relationship: use 70% of the related exercise's
+      // recorded max as a starting point, then apply the requested percentage.
+      const estimatedOneRM=max*0.70;
+      return {
+        weight:roundTrainingWeight(estimatedOneRM*(Number(percent)||0)/100),
+        source:"liknande övning",
+        basedOn:candidate
+      };
+    }
+  }
+  return null;
+}
+
+function roundTrainingWeight(value){
+  if(!value || value<=0)return 0;
+  // Round to practical gym increments.
+  const step=value<30?1:2.5;
+  return Math.round(value/step)*step;
+}
+
+function smartSuggestionHtml(profileId,exercise,percent){
+  const s=smartWeightSuggestion(profileId,exercise,percent);
+  if(!s)return "";
+  const pct=Number(percent)||0;
+  if(s.source==="eget PB"){
+    return `<div class="smart-weight">💡 <b>Rekommenderad vikt: ${s.weight} kg</b> · ${pct}% av ditt PB</div>`;
+  }
+  return `<div class="smart-weight">💡 <b>Rekommenderad startvikt: ca ${s.weight} kg</b><br><span class="sub">Baserat på ${esc(s.basedOn)} och dina registrerade resultat.</span></div>`;
+}
+
+function getPreviousExerciseLog(profileId,exercise,beforeDate){
+  const logs=data.logs.filter(l=>l.profileId===profileId && l.exercise===exercise && (!beforeDate || dateKey(l.date)<beforeDate));
+  logs.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  return logs.length?logs[logs.length-1]:null;
+}
+function formatPreviousSets(log){
+  if(!log || !log.sets || !log.sets.length)return "Inget tidigare resultat";
+  return log.sets.map(s=>{
+    if(s.time || s.duration)return `${s.name||"Övrigt"} · ${s.time||s.duration}`;
+    return `${s.kg||0} kg × ${s.reps||0}`;
+  }).join(", ");
+}
+function progressionHint(log){
+  if(!log || !log.sets || !log.sets.length)return "";
+  const sets=log.sets.map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg>0||s.reps>0);
+  if(!sets.length)return "";
+  const maxKg=Math.max(...sets.map(s=>s.kg));
+  const maxReps=Math.max(...sets.map(s=>s.reps));
+  const allSameWeight=sets.every(s=>s.kg===maxKg);
+  const allHitTop=sets.every(s=>s.reps>=maxReps);
+  if(allSameWeight && allHitTop){
+    return "🎯 Nästa steg: höj vikten lite och försök behålla repsen på alla set.";
+  }
+  const targets=sets.map(s=>`${maxKg} kg × ${Math.max(s.reps,Math.min(maxReps,s.reps+1))}`);
+  return `🎯 Dagens mål: ${targets.join(", ")}`;
+}
+function previousPerformanceHtml(profileId,exercise,beforeDate){
+  const prev=getPreviousExerciseLog(profileId,exercise,beforeDate);
+  if(!prev)return `<div class="previous-performance">🕘 <b>Senast:</b> inget tidigare resultat</div>`;
+  const hint=progressionHint(prev);
+  return `<div class="previous-performance"><div>🕘 <b>Senast:</b> ${esc(formatPreviousSets(prev))}</div>${hint?`<div class="progression-target">${esc(hint)}</div>`:""}</div>`;
+}
 function startWorkout(pid,did,chosenDate=null){
   activeDay={pid,did};
   activeWorkoutDate=chosenDate || dateKey(new Date());
@@ -1122,6 +1271,79 @@ function addSelectedExtraExercise(){
   workoutProfiles.forEach((_,pi)=>addSet(ei,pi));
   closeModal();
 }
+
+function buildWorkoutSummary(logs,profileId){
+  const person=data.profiles.find(p=>p.id===profileId);
+  const mine=logs.filter(l=>l.profileId===profileId);
+  let increased=0, improvedReps=0, unchanged=0;
+  const details=[];
+
+  mine.forEach(l=>{
+    const prev=getPreviousExerciseLog(profileId,l.exercise,dateKey(l.date));
+    if(!prev){
+      details.push({exercise:l.exercise,text:"🆕 Första registreringen"});
+      return;
+    }
+    const curMax=Math.max(...(l.sets||[]).map(s=>Number(s.kg)||0));
+    const prevMax=Math.max(...(prev.sets||[]).map(s=>Number(s.kg)||0));
+    const curReps=Math.max(...(l.sets||[]).map(s=>Number(s.reps)||0));
+    const prevReps=Math.max(...(prev.sets||[]).map(s=>Number(s.reps)||0));
+
+    if(curMax>prevMax){increased++;details.push({exercise:l.exercise,text:`📈 +${curMax-prevMax} kg`});}
+    else if(curReps>prevReps){improvedReps++;details.push({exercise:l.exercise,text:`🔢 +${curReps-prevReps} reps`});}
+    else {unchanged++;details.push({exercise:l.exercise,text:"➡️ Stabilt"});}
+  });
+
+  const score=increased*3+improvedReps*2+(mine.length?1:0);
+  const quality=score>=9?"🔥":score>=5?"💪":score>=2?"🙂":"😐";
+
+  const next=mine.map(l=>{
+    const prev=getPreviousExerciseLog(profileId,l.exercise,dateKey(l.date));
+    if(!prev)return null;
+    const sets=(prev.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);
+    if(!sets.length)return null;
+    const maxKg=Math.max(...sets.map(s=>s.kg));
+    const maxReps=Math.max(...sets.map(s=>s.reps));
+    const allTop=sets.every(s=>s.kg===maxKg && s.reps>=maxReps);
+    const target=allTop
+      ? `${maxKg} kg × ${maxReps} → testa lite högre vikt`
+      : sets.map(s=>`${maxKg} kg × ${Math.max(s.reps,Math.min(maxReps,s.reps+1))}`).join(", ");
+    return {exercise:l.exercise,target};
+  }).filter(Boolean);
+
+  return {person,quality,mine,increased,improvedReps,unchanged,details,next};
+}
+
+function showWorkoutSummary(allLogs,profileIds){
+  const summaries=profileIds.map(id=>buildWorkoutSummary(allLogs,id));
+  const htmlParts=summaries.map(s=>{
+    const dev=[];
+    if(s.increased)dev.push(`📈 ${s.increased} övning${s.increased===1?"":"ar"} med ökad vikt`);
+    if(s.improvedReps)dev.push(`🔢 ${s.improvedReps} övning${s.improvedReps===1?"":"ar"} med fler reps`);
+    if(!dev.length)dev.push("➡️ Fokus på att stabilisera och bygga vidare nästa pass.");
+
+    return `<div class="workout-summary-person">
+      <h2 style="margin:0">👤 ${esc(s.person?.name||"Person")} ${s.quality}</h2>
+      <div class="sub" style="margin-top:5px">Du genomförde ${s.mine.length} övningar.</div>
+      <div style="margin-top:10px"><b>📈 Vad du utvecklade</b></div>
+      <div class="sub" style="margin-top:4px">${dev.join(" · ")}</div>
+      <div style="margin-top:10px"><b>🎯 Mål till nästa pass</b></div>
+      <div class="summary-targets">
+        ${s.next.length?s.next.map(n=>`<div>🏋️ ${esc(n.exercise)} — ${esc(n.target)}</div>`).join(""):"<div class='sub'>Fortsätt bygga på dagens nivå.</div>"}
+      </div>
+    </div>`;
+  }).join("");
+
+  openModal(`<div class="workout-summary">
+    <div style="text-align:center">
+      <div style="font-size:38px">🏁</div>
+      <h1 style="margin:4px 0">Passet är klart!</h1>
+      <div class="sub">Här är en snabb sammanfattning.</div>
+    </div>
+    ${htmlParts}
+    <button onclick="closeModal();showTab('calendar')">📅 Till kalendern</button>
+  </div>`);
+}
 function finishWorkout(){
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
@@ -1170,6 +1392,9 @@ function finishWorkout(){
   });
 
   save();
+  const finishedDate=dateKey(date);
+  const finishedLogs=data.logs.filter(l=>dateKey(l.date)===finishedDate && workoutProfiles.includes(l.profileId));
+  showWorkoutSummary(finishedLogs,workoutProfiles);
   activeDay=null;
   activeWorkoutDate=null;
   workoutProfiles=[data.activeProfile];
