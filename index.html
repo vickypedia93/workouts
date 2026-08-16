@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.45 – jämn mobil layout */
+/* v1.47 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.45 – vald dag i kalendern stannar markerad */
+/* v1.47 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.45 – kompaktare mobilknappar */
+/* v1.47 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.45 – mobil layout och startsida */
+/* v1.47 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.45 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.47 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -277,7 +277,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.45 – konsekvent knappjustering på mobil */
+/* v1.47 – konsekvent knappjustering på mobil */
 @media (max-width:600px){
   /* Header profile chip aligns to the same right edge as the content cards. */
   header{
@@ -377,7 +377,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.45 – utveckling per person/pass + Övrigt */
+/* v1.47 – utveckling per person/pass + Övrigt */
 .development-workout-toggle{
   width:100%;
   display:flex;
@@ -390,7 +390,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.45 – profilknappen längst ut till höger på mobilen */
+/* v1.47 – profilknappen längst ut till höger på mobilen */
 @media(max-width:600px){
   header{
     width:100%;
@@ -459,13 +459,27 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
   .smart-weight{font-size:12px;padding:7px 9px}
 }
 
+
+.previous-performance{
+  margin-top:6px;
+  padding:7px 9px;
+  border-radius:9px;
+  background:var(--muted,#f4f6f7);
+  font-size:12px;
+  line-height:1.45;
+}
+.progression-target{margin-top:3px;font-weight:600}
+@media(max-width:600px){
+  .previous-performance{font-size:11.5px;padding:6px 8px}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.45</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.47</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
@@ -1104,9 +1118,14 @@ function smartSuggestionHtml(profileId,exercise,percent){
 }
 
 function getPreviousExerciseLog(profileId,exercise,beforeDate){
-  const logs=data.logs.filter(l=>l.profileId===profileId && l.exercise===exercise && (!beforeDate || dateKey(l.date)<beforeDate));
-  logs.sort((a,b)=>new Date(a.date)-new Date(b.date));
-  return logs.length?logs[logs.length-1]:null;
+  const cutoff=beforeDate || dateKey(new Date());
+  const logs=data.logs.filter(l=>{
+    if(l.profileId!==profileId || l.exercise!==exercise)return false;
+    const d=dateKey(l.date);
+    return d<cutoff;
+  });
+  logs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return logs.length?logs[0]:null;
 }
 function formatPreviousSets(log){
   if(!log || !log.sets || !log.sets.length)return "Inget tidigare resultat";
@@ -1135,12 +1154,13 @@ function previousPerformanceHtml(profileId,exercise,beforeDate){
   const hint=progressionHint(prev);
   return `<div class="previous-performance"><div>🕘 <b>Senast:</b> ${esc(formatPreviousSets(prev))}</div>${hint?`<div class="progression-target">${esc(hint)}</div>`:""}</div>`;
 }
-function startWorkout(pid,did,chosenDate=null){
+async function startWorkout(pid,did,chosenDate=null){
   activeDay={pid,did};
   activeWorkoutDate=chosenDate || dateKey(new Date());
   if(!Array.isArray(workoutProfiles) || workoutProfiles.length===0){
     workoutProfiles=[data.activeProfile];
   }
+  try{ await syncFromCloud(); }catch(err){ console.warn("Workouts cloud sync before workout:",err); }
   renderWorkout();
 }
 function renderWorkout(){
@@ -1177,7 +1197,11 @@ function renderWorkout(){
         ${people.map((person,pi)=>`
           <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
             <div class="row">
-              <b>👤 ${esc(person.name)}</b>
+              <div style="flex:1">
+                <b>👤 ${esc(person.name)}</b>
+                ${previousPerformanceHtml(person.id,ex,activeWorkoutDate||dateKey(new Date()))}
+                
+              </div>
               <button class="secondary" onclick="addSet(${ei},${pi})">＋ Set</button>
             </div>
             <div class="sets" style="margin-top:7px">
