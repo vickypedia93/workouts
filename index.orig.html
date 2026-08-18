@@ -576,22 +576,6 @@ const defaultData = {
 let data = JSON.parse(localStorage.getItem("traningslogg") || "null") || defaultData;const BUILTIN_EXERCISE_BANK = EXERCISES.filter(e=>e!=="Övrigt");
 if(!data.exerciseBank || !Array.isArray(data.exerciseBank)) data.exerciseBank=[];
 data.exerciseBank=[...new Set([...BUILTIN_EXERCISE_BANK,...data.exerciseBank].map(x=>String(x).trim()).filter(Boolean))];
-if(!data.exerciseSettings || typeof data.exerciseSettings!=="object") data.exerciseSettings={};
-function inferExerciseMode(exercise){
-  const saved=data.exerciseSettings?.[exercise]?.mode;
-  if(saved)return saved;
-  const t=String(EXERCISE_TARGETS[exercise]||"").toLowerCase();
-  if(/sek|sekund|min/.test(t) || /plank|dead hang|wall sit/i.test(exercise)) return "time";
-  return "weight";
-}
-function getExerciseSetting(exercise){
-  return {mode:inferExerciseMode(exercise),target:data.exerciseSettings?.[exercise]?.target||EXERCISE_TARGETS[exercise]||""};
-}
-function setExerciseSetting(exercise,mode,target){
-  data.exerciseSettings[exercise]={mode,target:String(target||"").trim()};
-  if(target) EXERCISE_TARGETS[exercise]=String(target).trim();
-}
-function exerciseTarget(exercise){return getExerciseSetting(exercise).target;}
 function getExerciseBank(){ return [...new Set(data.exerciseBank||[])].sort((a,b)=>a.localeCompare(b,"sv")); }
 function saveExerciseToBank(name){
   name=String(name||"").trim();
@@ -1188,51 +1172,38 @@ function formatPreviousSets(log){
   }).join(", ");
 }
 function parseRepTarget(exercise){
-  const text=String(exerciseTarget(exercise)||"");
+  const text=String(EXERCISE_TARGETS[exercise]||"");
   const m=text.match(/(\d+)\s*[–-]\s*(\d+)/);
-  return m?{min:Number(m[1]),max:Number(m[2])}:null;
+  return m?{min:Number(m[1]),max:Number(m[2]),stretch:Number(m[2])+2}:null;
 }
-function parseTimeTarget(exercise){
-  const text=String(exerciseTarget(exercise)||"");
-  const m=text.match(/(\d+)\s*[–-]\s*(\d+)\s*(sek|sekunder|s|min)/i);
-  if(!m)return null;
-  const mult=/min/i.test(m[3])?60:1; return {min:Number(m[1])*mult,max:Number(m[2])*mult};
-}
-function parseDurationSeconds(value){
-  const v=String(value||"").trim(); if(!v)return 0;
-  if(/^\d+:\d{1,2}$/.test(v)){const [m,s]=v.split(':').map(Number);return m*60+s;}
-  const n=parseFloat(v.replace(',','.')); return isFinite(n)?n:0;
-}
-function formatDuration(seconds){seconds=Math.round(Number(seconds)||0); return seconds>=60?`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`:`${seconds} sek`;}
 function manualGoalKey(profileId,exercise){return `manualGoal:${profileId}:${exercise}`;}
 function getManualGoal(profileId,exercise){try{return JSON.parse(localStorage.getItem(manualGoalKey(profileId,exercise))||"null")}catch(e){return null}}
 function setManualGoal(profileId,exercise,goal){localStorage.setItem(manualGoalKey(profileId,exercise),JSON.stringify(goal));}
-function targetSetCount(exercise){ const target=exerciseTarget(exercise)||""; const m=String(target).match(/^\s*(\d+)\s*[×x]/); return m?Number(m[1]):1; }
 function nextGoal(profileId,exercise,beforeDate){
   const manual=getManualGoal(profileId,exercise); if(manual)return manual.text;
-  const mode=inferExerciseMode(exercise);
-  const target=mode==="time"?parseTimeTarget(exercise):parseRepTarget(exercise);
+  const target=parseRepTarget(exercise);
   const cutoff=beforeDate||dateKey(new Date());
   const history=data.logs.filter(l=>l.profileId===profileId&&l.exercise===exercise&&dateKey(l.date)<cutoff).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const prev=history[0]; const setCount=targetSetCount(exercise);
-  if(!prev)return target?`🎯 Nästa mål: ${setCount} × ${mode==="time"?formatDuration(target.min):target.min+" reps"}.`:'🎯 Nästa mål: registrera ditt första resultat.';
-  if(mode==="time"){
-    const times=(prev.sets||[]).map(s=>parseDurationSeconds(s.time||s.duration)).filter(Boolean);
-    if(!target||!times.length)return '🎯 Nästa mål: bygg vidare på föregående resultat.';
-    const full=times.length>=setCount && times.slice(0,setCount).every(t=>t>=target.max);
-    const qualifying=history.filter(l=>{const ts=(l.sets||[]).map(s=>parseDurationSeconds(s.time||s.duration)).filter(Boolean);return ts.length>=setCount&&ts.slice(0,setCount).every(t=>t>=target.max);});
-    if(full){ if(qualifying.length>=2)return `🎯 Nästa mål: öka tiden eller justera målet.`; return `🎯 Nästa mål: upprepa ${setCount} × ${formatDuration(target.max)} i ett pass till.`;}
-    const next=Math.min(target.max,Math.max(...times)+1); return `🎯 Nästa mål: ${setCount} × ${formatDuration(next)}.`;
-  }
-  const sets=(prev.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);
-  if(!target||!sets.length)return '🎯 Nästa mål: bygg vidare på föregående resultat.';
-  const kg=Math.max(...sets.map(s=>s.kg));
-  const working=sets.filter(s=>s.kg===kg);
-  const full=working.length>=setCount && working.slice(0,setCount).every(s=>s.reps>=target.max);
-  const qualifying=history.filter(l=>{const ss=(l.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);const ws=ss.filter(s=>s.kg===kg);return ws.length>=setCount&&ws.slice(0,setCount).every(s=>s.reps>=target.max);});
-  if(full){if(qualifying.length>=2)return `🎯 Nästa mål: öka vikten från ${kg} kg.`;return `🎯 Nästa mål: upprepa ${setCount} × ${target.max} reps på ${kg} kg i ett pass till.`;}
-  const current=Math.max(target.min-1,...working.map(s=>s.reps)); const next=Math.min(target.max,current+1);
-  return `🎯 Nästa mål: ${setCount} × ${next} reps på ${kg} kg.`;
+  const prev=history[0];
+  if(!prev)return target?`🎯 Nästa mål: nå ${target.min} reps.`:"🎯 Nästa mål: registrera ditt första resultat.";
+  const sets=(prev.sets||[]).map(x=>({kg:Number(x.kg)||0,reps:Number(x.reps)||0})).filter(x=>x.kg||x.reps);
+  if(!sets.length)return "🎯 Nästa mål: bygg vidare på föregående resultat.";
+  // Use one actual set as the reference so weight and reps can never be mixed from different sets.
+  const reference=sets.slice().sort((a,b)=>b.reps-a.reps || b.kg-a.kg)[0];
+  const kg=reference.kg, reps=reference.reps;
+  if(!target)return `🎯 Nästa mål: ${reps+1} reps på ${kg} kg.`;
+  // Never suggest a weight increase before the top of the programmed rep range has been reached.
+  if(reps<target.max)return `🎯 Nästa mål: ${Math.min(target.max,reps+1)} reps på ${kg} kg.`;
+  // After the top of the range, build one rep at a time up to max + 2.
+  if(reps<target.stretch)return `🎯 Nästa mål: ${reps+1} reps på ${kg} kg.`;
+  // Weight increase is unlocked only after max + 2 reps has been achieved on the SAME weight in two separate workouts.
+  const qualifying=history.filter(l=>{
+    const ss=(l.sets||[]).map(x=>({kg:Number(x.kg)||0,reps:Number(x.reps)||0}));
+    return ss.some(x=>x.kg===kg && x.reps>=target.stretch);
+  });
+  const distinctDates=[...new Set(qualifying.map(l=>dateKey(l.date)))];
+  if(distinctDates.length>=2)return `🎯 Nästa mål: öka vikten från ${kg} kg.`;
+  return `🎯 Nästa mål: gör ${target.stretch} reps på ${kg} kg i ett pass till.`;
 }
 function showGoalEditor(profileId,exercise){
   const current=getManualGoal(profileId,exercise)?.text||nextGoal(profileId,exercise,activeWorkoutDate);
@@ -1260,6 +1231,11 @@ async function startWorkout(pid,did,chosenDate=null){
   renderWorkout();
 }
 
+function targetSetCount(exercise){
+  const target=EXERCISE_TARGETS[exercise]||"";
+  const m=String(target).match(/^\s*(\d+)\s*[×x]/);
+  return m?Number(m[1]):1;
+}
 function renderWorkout(){
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
@@ -1288,7 +1264,7 @@ function renderWorkout(){
   w.innerHTML=d.exercises.map((ex,ei)=>`
     <div class="card">
       <div class="row">
-        <div><b>${ex==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(ex)}</b>${exerciseTarget(ex)?`<div class="sub">🎯 ${exerciseTarget(ex)}</div>`:""}</div>
+        <div><b>${ex==="Övrigt"?"➕ Övrigt":"🏋️ "+esc(ex)}</b>${EXERCISE_TARGETS[ex]?`<div class="sub">🎯 ${EXERCISE_TARGETS[ex]}</div>`:""}</div>
       </div>
       <div style="margin-top:12px">
         ${people.map((person,pi)=>`
@@ -1303,8 +1279,8 @@ function renderWorkout(){
             </div>
             <div class="sets" style="margin-top:7px">
               <div class="head">#</div>
-              <div class="head">${ex==="Övrigt"?"ÖVNING":inferExerciseMode(ex)==="time"?"TID":"KG"}</div>
-              <div class="head">${ex==="Övrigt"?"TID":inferExerciseMode(ex)==="time"?"REPS":"REPS"}</div>
+              <div class="head">${ex==="Övrigt"?"ÖVNING":"KG"}</div>
+              <div class="head">${ex==="Övrigt"?"TID":"REPS"}</div>
               <div></div>
             </div>
             <div id="sets-${ei}-${pi}"></div>
@@ -1329,7 +1305,7 @@ function addSet(ei,pi){
   if(!box)return;
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
-  const ex=d.exercises[ei] || box.closest(".extra-workout-exercise")?.dataset.extraExercise || "Övrigt";
+  const ex=d.exercises[ei];
   const n=box.children.length+1;
 
   if(ex==="Övrigt"){
@@ -1340,10 +1316,14 @@ function addSet(ei,pi){
         <input class="other-time" placeholder="T.ex. 1:00">
         <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
       </div>`);
-  }else if(inferExerciseMode(ex)==="time"){
-    box.insertAdjacentHTML("beforeend",`<div class="sets time-set" data-set="${n}"><div>${n}</div><input class="time-input" placeholder="t.ex. 45 sek eller 1:00"><input class="reps-input" inputmode="numeric" placeholder="reps (valfritt)"><button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button></div>`);
   }else{
-    box.insertAdjacentHTML("beforeend",`<div class="sets" data-set="${n}"><div>${n}</div><input class="weight-input" inputmode="decimal" placeholder="kg"><input class="reps-input" inputmode="numeric" placeholder="reps"><button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button></div>`);
+    box.insertAdjacentHTML("beforeend",`
+      <div class="sets" data-set="${n}">
+        <div>${n}</div>
+        <input class="weight-input" inputmode="decimal" placeholder="kg">
+        <input class="reps-input" inputmode="numeric" placeholder="reps">
+        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
+      </div>`);
   }
 }
 function addExtraExerciseDuringWorkout(){
@@ -1358,8 +1338,6 @@ function addExtraExerciseDuringWorkout(){
     </label>
     <div id="customExtraWrap" style="display:none;margin-top:10px">
       <input id="customExtraName" placeholder="Vilken övning?">
-      <label style="display:block;margin-top:10px">Typ <select id="customExtraMode" style="width:100%;padding:10px"><option value="weight">KG × set × reps</option><option value="time">Tid × reps</option></select></label>
-      <input id="customExtraTarget" placeholder="T.ex. 3 × 30–60 sek" style="margin-top:8px">
     </div>
     <div class="actions">
       <button onclick="addSelectedExtraExercise()">Lägg till</button>
@@ -1376,8 +1354,7 @@ function addSelectedExtraExercise(){
     ex=(prompt("Vilken övning är det?")||"").trim();
   }
   if(!ex){alert("Välj eller skriv en övning.");return;}
-  const customMode=document.getElementById("customExtraMode")?.value; const customTarget=document.getElementById("customExtraTarget")?.value.trim();
-  ex=saveExerciseToBank(ex); if(customMode)setExerciseSetting(ex,customMode,customTarget||exerciseTarget(ex));
+  ex=saveExerciseToBank(ex);
 
   const w=document.getElementById("workout");
   const ei=999000+Date.now();
@@ -1386,7 +1363,7 @@ function addSelectedExtraExercise(){
     return `<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
       <div class="row"><b>👤 ${esc(person)}</b><button class="secondary" onclick="addSet(${ei},${pi})">＋ Set</button></div>
       <div class="sets" style="margin-top:7px">
-        <div class="head">#</div><div class="head">${inferExerciseMode(ex)==="time"?"TID":"KG"}</div><div class="head">REPS</div><div></div>
+        <div class="head">#</div><div class="head">KG</div><div class="head">REPS</div><div></div>
       </div>
       <div id="sets-${ei}-${pi}"></div>
     </div>`;
@@ -1429,7 +1406,19 @@ function buildWorkoutSummary(logs,profileId){
   const score=increased*3+improvedReps*2+(mine.length?1:0);
   const quality=score>=9?"🔥":score>=5?"💪":score>=2?"🙂":"😐";
 
-  const next=[...new Set(mine.map(l=>l.exercise))].map(ex=>{const dt=new Date(mine.find(l=>l.exercise===ex)?.date||Date.now());dt.setDate(dt.getDate()+1);return {exercise:ex,target:nextGoal(profileId,ex,dateKey(dt))};});
+  const next=mine.map(l=>{
+    const prev=getPreviousExerciseLog(profileId,l.exercise,dateKey(l.date));
+    if(!prev)return null;
+    const sets=(prev.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);
+    if(!sets.length)return null;
+    const maxKg=Math.max(...sets.map(s=>s.kg));
+    const maxReps=Math.max(...sets.map(s=>s.reps));
+    const allTop=sets.every(s=>s.kg===maxKg && s.reps>=maxReps);
+    const target=allTop
+      ? `${maxKg} kg × ${maxReps} → testa lite högre vikt`
+      : sets.map(s=>`${maxKg} kg × ${Math.max(s.reps,Math.min(maxReps,s.reps+1))}`).join(", ");
+    return {exercise:l.exercise,target};
+  }).filter(Boolean);
 
   return {person,quality,mine,increased,improvedReps,unchanged,details,next};
 }
@@ -1489,7 +1478,10 @@ function finishWorkout(){
           }
         });
       }else{
-        const sets=rows.map(row=> inferExerciseMode(ex)==="time" ? ({time:row.querySelector(".time-input")?.value.trim()||"", reps:parseInt(row.querySelector(".reps-input")?.value)||0}) : ({kg:parseFloat(row.querySelector(".weight-input")?.value)||0,reps:parseInt(row.querySelector(".reps-input")?.value)||0})).filter(s=>s.time || s.kg>0 || s.reps>0);
+        const sets=rows.map(row=>({
+          kg:parseFloat(row.querySelector(".weight-input")?.value)||0,
+          reps:parseInt(row.querySelector(".reps-input")?.value)||0
+        })).filter(s=>s.kg>0 || s.reps>0);
 
         if(sets.length){
           data.logs.push({date,profileId,exercise:ex,sets});
@@ -1914,12 +1906,8 @@ function filterExercisePicker(pid,did){
 }
 function showCustomExercise(pid,did){
   openModal(`<h2>➕ Lägg till ny övning</h2>
-    <div class="sub">Välj hur övningen ska registreras.</div>
-    <input id="customExerciseName" placeholder="T.ex. Plankan" style="width:100%;padding:12px;margin-top:12px;border:1px solid var(--border);border-radius:10px">
-    <label style="display:block;margin-top:12px">Typ
-      <select id="customExerciseMode" style="width:100%;padding:10px"><option value="weight">🏋️ KG × set × reps</option><option value="time">⏱️ Tid × reps</option></select>
-    </label>
-    <input id="customExerciseTarget" placeholder="T.ex. 3 × 6–10 reps eller 3 × 30–60 sek" style="width:100%;padding:12px;margin-top:10px;border:1px solid var(--border);border-radius:10px">
+    <div class="sub">Övningen sparas i banken och finns att söka fram nästa gång.</div>
+    <input id="customExerciseName" placeholder="T.ex. Zercher Squat" style="width:100%;padding:12px;margin-top:12px;border:1px solid var(--border);border-radius:10px">
     <div class="actions">
       <button onclick="saveCustomExercise('${pid}','${did}')">Spara övning</button>
       <button class="secondary" onclick="addExercise('${pid}','${did}')">Tillbaka</button>
@@ -1931,9 +1919,6 @@ function saveCustomExercise(pid,did){
   if(!name){alert("Skriv namnet på övningen.");return;}
   if(name==="Övrigt"){alert("Ange den faktiska övningen.");return;}
   const saved=saveExerciseToBank(name);
-  const mode=document.getElementById("customExerciseMode")?.value||inferExerciseMode(saved);
-  const target=document.getElementById("customExerciseTarget")?.value.trim()||"";
-  setExerciseSetting(saved,mode,target);
   const d=data.programs.find(p=>p.id===pid).days.find(d=>d.id===did);
   if(!d.exercises.some(e=>e.toLowerCase()===saved.toLowerCase()))d.exercises.push(saved);
   save();closeModal();render();
