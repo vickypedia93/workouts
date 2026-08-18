@@ -1222,7 +1222,10 @@ function nextGoal(profileId,exercise,beforeDate){
     const full=times.length>=setCount && times.slice(0,setCount).every(t=>t>=target.max);
     const qualifying=history.filter(l=>{const ts=(l.sets||[]).map(s=>parseDurationSeconds(s.time||s.duration)).filter(Boolean);return ts.length>=setCount&&ts.slice(0,setCount).every(t=>t>=target.max);});
     if(full){ if(qualifying.length>=2)return `🎯 Nästa mål: öka tiden eller justera målet.`; return `🎯 Nästa mål: upprepa ${setCount} × ${formatDuration(target.max)} i ett pass till.`;}
-    const next=Math.min(target.max,Math.max(...times)+1); return `🎯 Nästa mål: ${setCount} × ${formatDuration(next)}.`;
+    // Same whole-set logic for time-based exercises: progress from the lowest planned set.
+    const planned=times.slice(0,setCount);
+    const lowest=Math.min(...planned); const next=Math.min(target.max,Math.max(target.min,lowest+1));
+    return `🎯 Nästa mål: ${setCount} × ${formatDuration(next)}.`;
   }
   const sets=(prev.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);
   if(!target||!sets.length)return '🎯 Nästa mål: bygg vidare på föregående resultat.';
@@ -1231,7 +1234,11 @@ function nextGoal(profileId,exercise,beforeDate){
   const full=working.length>=setCount && working.slice(0,setCount).every(s=>s.reps>=target.max);
   const qualifying=history.filter(l=>{const ss=(l.sets||[]).map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg||s.reps);const ws=ss.filter(s=>s.kg===kg);return ws.length>=setCount&&ws.slice(0,setCount).every(s=>s.reps>=target.max);});
   if(full){if(qualifying.length>=2)return `🎯 Nästa mål: öka vikten från ${kg} kg.`;return `🎯 Nästa mål: upprepa ${setCount} × ${target.max} reps på ${kg} kg i ett pass till.`;}
-  const current=Math.max(target.min-1,...working.map(s=>s.reps)); const next=Math.min(target.max,current+1);
+  // Progression is based on the whole prescribed set scheme, not the best individual set.
+  // Raise the lowest completed set by one rep (capped at max), so e.g. 8/8/10 in 3×8–10 becomes a goal of 3×9.
+  const planned=working.slice(0,setCount);
+  const lowest=Math.min(...planned.map(s=>s.reps));
+  const next=Math.min(target.max,Math.max(target.min,lowest+1));
   return `🎯 Nästa mål: ${setCount} × ${next} reps på ${kg} kg.`;
 }
 function showGoalEditor(profileId,exercise){
