@@ -31,7 +31,7 @@
 
     @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:22px;max-width:600px}}
   
-/* v1.49 – jämn mobil layout */
+/* v1.50 – jämn mobil layout */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 body{margin:0}
@@ -113,7 +113,7 @@ td,th{word-break:break-word}
 .delete-set:hover{background:#ffe1e1}
 
 
-/* v1.49 – vald dag i kalendern stannar markerad */
+/* v1.50 – vald dag i kalendern stannar markerad */
 .calDay.selected{
   outline:3px solid currentColor;
   outline-offset:-3px;
@@ -125,7 +125,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.49 – kompaktare mobilknappar */
+/* v1.50 – kompaktare mobilknappar */
 @media (max-width:600px){
   button{
     min-height:40px;
@@ -152,7 +152,7 @@ td,th{word-break:break-word}
 }
 
 
-/* v1.49 – mobil layout och startsida */
+/* v1.50 – mobil layout och startsida */
 *{box-sizing:border-box}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 .profile-chip{
@@ -247,7 +247,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.49 – profilknappen linjeras med navigationsraden på mobil */
+/* v1.50 – profilknappen linjeras med navigationsraden på mobil */
 @media (max-width:600px){
   header{
     width:100%;
@@ -277,7 +277,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.49 – konsekvent knappjustering på mobil */
+/* v1.50 – konsekvent knappjustering på mobil */
 @media (max-width:600px){
   /* Header profile chip aligns to the same right edge as the content cards. */
   header{
@@ -377,7 +377,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.49 – utveckling per person/pass + Övrigt */
+/* v1.50 – utveckling per person/pass + Övrigt */
 .development-workout-toggle{
   width:100%;
   display:flex;
@@ -390,7 +390,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 }
 
 
-/* v1.49 – profilknappen längst ut till höger på mobilen */
+/* v1.50 – profilknappen längst ut till höger på mobilen */
 @media(max-width:600px){
   header{
     width:100%;
@@ -483,13 +483,17 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}
 
 
 .exercisePick{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}.exercisePick:hover{background:#f7f8f9}@media(max-width:600px){#exerciseSearch{font-size:16px}.exercisePick{min-height:46px}}
+
+/* v1.50 – mål, autospar och gemensamt pass */
+.goal-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.goal-actions button{font-size:12px;padding:7px 9px;min-height:34px}
+.autosave-note{font-size:12px;color:var(--muted);margin-top:6px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.49</div></div>
+    <div><h1>Workouts</h1><div class="sub">Din träning, sparad på telefonen. · v1.50</div></div>
     <div class="actions" style="margin:0"><button class="secondary profile-chip" onclick="showProfiles()"><span>👤 <span id="activeProfileName"></span>⌄</span><small>Byt profil</small></button></div>
   </div>
 
@@ -967,7 +971,7 @@ function showCalendarDay(key){
 
   box.innerHTML=`<div class="card">
     <h3 style="margin:0 0 4px">📅 ${new Date(key+"T12:00:00").toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long"})}</h3>
-    <div class="sub">👥 Tränade: ${Object.keys(byProfile).map(pid=>esc((data.profiles.find(p=>p.id===pid)||{name:"Okänd"}).name)).join(", ")}</div>
+    <div class="sub">👥 Tränade: ${Object.keys(byProfile).map(pid=>esc((data.profiles.find(p=>p.id===pid)||{name:"Okänd"}).name)).join(", ")}</div><div class="actions" style="margin-top:10px"><button class="secondary" onclick="startBackdateFromCalendar('${key}')">✏️ Redigera/registrera pass</button></div>
     ${Object.entries(byProfile).map(([pid,logs])=>{
       const person=(data.profiles.find(p=>p.id===pid)||{name:"Okänd"}).name;
       const grouped={};
@@ -1167,24 +1171,41 @@ function formatPreviousSets(log){
     return `${s.kg||0} kg × ${s.reps||0}`;
   }).join(", ");
 }
-function progressionHint(log){
-  if(!log || !log.sets || !log.sets.length)return "";
-  const sets=log.sets.map(s=>({kg:Number(s.kg)||0,reps:Number(s.reps)||0})).filter(s=>s.kg>0||s.reps>0);
-  if(!sets.length)return "";
-  const maxKg=Math.max(...sets.map(s=>s.kg));
-  const maxReps=Math.max(...sets.map(s=>s.reps));
-  const allSameWeight=sets.every(s=>s.kg===maxKg);
-  const allHitTop=sets.every(s=>s.reps>=maxReps);
-  if(allSameWeight && allHitTop){
-    return "🎯 Nästa steg: höj vikten lite och försök behålla repsen på alla set.";
-  }
-  const targets=sets.map(s=>`${maxKg} kg × ${Math.max(s.reps,Math.min(maxReps,s.reps+1))}`);
-  return `🎯 Dagens mål: ${targets.join(", ")}`;
+function parseRepTarget(exercise){
+  const text=String(EXERCISE_TARGETS[exercise]||"");
+  const m=text.match(/(\d+)\s*[–-]\s*(\d+)/);
+  return m?{min:Number(m[1]),max:Number(m[2]),stretch:Number(m[2])+2}:null;
 }
+function manualGoalKey(profileId,exercise){return `manualGoal:${profileId}:${exercise}`;}
+function getManualGoal(profileId,exercise){try{return JSON.parse(localStorage.getItem(manualGoalKey(profileId,exercise))||"null")}catch(e){return null}}
+function setManualGoal(profileId,exercise,goal){localStorage.setItem(manualGoalKey(profileId,exercise),JSON.stringify(goal));}
+function nextGoal(profileId,exercise,beforeDate){
+  const manual=getManualGoal(profileId,exercise); if(manual)return manual.text;
+  const target=parseRepTarget(exercise); const prev=getPreviousExerciseLog(profileId,exercise,beforeDate);
+  if(!prev)return target?`🎯 Nästa mål: nå ${target.min} reps.`:"🎯 Nästa mål: registrera ditt första resultat.";
+  const sets=(prev.sets||[]).map(x=>({kg:Number(x.kg)||0,reps:Number(x.reps)||0})).filter(x=>x.kg||x.reps);
+  if(!sets.length)return "🎯 Nästa mål: bygg vidare på föregående resultat.";
+  const kg=Math.max(...sets.map(x=>x.kg)), reps=Math.max(...sets.map(x=>x.reps));
+  if(!target)return `🎯 Nästa mål: ${reps+1} reps på ${kg} kg.`;
+  if(reps<target.max)return `🎯 Nästa mål: ${Math.min(target.max,reps+1)} reps på ${kg} kg.`;
+  const history=data.logs.filter(l=>l.profileId===profileId&&l.exercise===exercise&&dateKey(l.date)<(beforeDate||dateKey(new Date()))).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const ready=history.slice(0,2).filter(l=>Math.max(...(l.sets||[]).map(x=>Number(x.kg)||0))===kg && Math.max(...(l.sets||[]).map(x=>Number(x.reps)||0))>=target.stretch).length>=2;
+  return ready?`🎯 Nästa mål: öka vikten från ${kg} kg.`:`🎯 Nästa mål: bygg mot ${target.stretch} reps på ${kg} kg (2 pass).`;
+}
+function showGoalEditor(profileId,exercise){
+  const current=getManualGoal(profileId,exercise)?.text||nextGoal(profileId,exercise,activeWorkoutDate);
+  openModal(`<h2>🎯 Justera nästa mål</h2><div class="sub">Du kan snabbt ta över progressionen själv om vikten känns för lätt eller om du vill ändra målet.</div><input id="manualGoalText" value="${esc(current.replace(/^🎯 Nästa mål:\s*/,''))}" style="margin-top:12px"><div class="actions"><button onclick="saveManualGoal('${profileId}','${esc(exercise).replace(/'/g,"\\'")}')">Spara mål</button><button class="secondary" onclick="clearManualGoal('${profileId}','${esc(exercise).replace(/'/g,"\\'")}')">Återgå till automatiskt</button></div>`);
+}
+function saveManualGoal(profileId,exercise){const text=document.getElementById('manualGoalText').value.trim();if(text)setManualGoal(profileId,exercise,{text:'🎯 Nästa mål: '+text});closeModal();renderWorkout();}
+function clearManualGoal(profileId,exercise){localStorage.removeItem(manualGoalKey(profileId,exercise));closeModal();renderWorkout();}
+function draftKey(){return activeDay?`workoutDraft:${activeDay.pid}:${activeDay.did}:${activeWorkoutDate}:${workoutProfiles.join(',')}`:''}
+function saveWorkoutDraft(){const k=draftKey();if(!k)return;const inputs=[...document.querySelectorAll('#workout input')].map((x,i)=>({i,value:x.value}));localStorage.setItem(k,JSON.stringify(inputs));}
+function restoreWorkoutDraft(){const k=draftKey();if(!k)return;try{const a=JSON.parse(localStorage.getItem(k)||'[]');a.forEach(v=>{const el=document.querySelectorAll('#workout input')[v.i];if(el)el.value=v.value});}catch(e){}}
+function progressionHint(log){ return ""; }
 function previousPerformanceHtml(profileId,exercise,beforeDate){
   const prev=getPreviousExerciseLog(profileId,exercise,beforeDate);
   if(!prev)return `<div class="previous-performance">🕘 <b>Senast:</b> inget tidigare resultat</div>`;
-  const hint=progressionHint(prev);
+  const hint=nextGoal(profileId,exercise,beforeDate);
   return `<div class="previous-performance"><div>🕘 <b>Senast:</b> ${esc(formatPreviousSets(prev))}</div>${hint?`<div class="progression-target">${esc(hint)}</div>`:""}</div>`;
 }
 async function startWorkout(pid,did,chosenDate=null){
@@ -1238,7 +1259,7 @@ function renderWorkout(){
             <div class="row">
               <div style="flex:1">
                 <b>👤 ${esc(person.name)}</b>
-                ${previousPerformanceHtml(person.id,ex,activeWorkoutDate||dateKey(new Date()))}
+                ${previousPerformanceHtml(person.id,ex,activeWorkoutDate||dateKey(new Date()))}<div class="goal-actions"><button class="secondary" onclick="showGoalEditor('${person.id}','${String(ex).replace(/'/g,"\'")}')">🎯 Justera nästa mål</button></div>
                 
               </div>
               <button class="secondary" onclick="addSet(${ei},${pi})">＋ Set</button>
@@ -1262,6 +1283,8 @@ function renderWorkout(){
       for(let s=0;s<count;s++) addSet(ei,pi);
     });
   });
+  restoreWorkoutDraft();
+  document.getElementById("workout")?.addEventListener("input",saveWorkoutDraft);
 }
 
 function addSet(ei,pi){
@@ -1278,7 +1301,7 @@ function addSet(ei,pi){
         <div>${n}</div>
         <input class="other-name" placeholder="T.ex. Plankan">
         <input class="other-time" placeholder="T.ex. 1:00">
-        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
       </div>`);
   }else{
     box.insertAdjacentHTML("beforeend",`
@@ -1286,7 +1309,7 @@ function addSet(ei,pi){
         <div>${n}</div>
         <input class="weight-input" inputmode="decimal" placeholder="kg">
         <input class="reps-input" inputmode="numeric" placeholder="reps">
-        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+        <button class="delete-set" title="Ta bort set" aria-label="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
       </div>`);
   }
 }
@@ -1418,6 +1441,8 @@ function showWorkoutSummary(allLogs,profileIds){
   </div>`);
 }
 function finishWorkout(){
+  // Replace this participants existing results for the same exercise/date when saving again.
+  
   const p=data.programs.find(x=>x.id===activeDay.pid);
   const d=p.days.find(x=>x.id===activeDay.did);
   const selected=document.getElementById("workoutDate")?.value || dateKey(new Date());
@@ -1464,6 +1489,7 @@ function finishWorkout(){
     });
   });
 
+  localStorage.removeItem(draftKey());
   save();
   const finishedDate=dateKey(date);
   const finishedLogs=data.logs.filter(l=>dateKey(l.date)===finishedDate && workoutProfiles.includes(l.profileId));
@@ -1635,7 +1661,7 @@ function addFreeSet(id,pi,type){
         <div>${n}</div>
         <input class="other-name" placeholder="Övning">
         <input class="other-time" placeholder="Tid">
-        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
       </div>`);
   }else{
     box.insertAdjacentHTML("beforeend",`
@@ -1643,7 +1669,7 @@ function addFreeSet(id,pi,type){
         <div>${n}</div>
         <input class="weight-input" inputmode="decimal" placeholder="kg">
         <input class="reps-input" inputmode="numeric" placeholder="reps">
-        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove()">✕</button>
+        <button class="delete-set" title="Ta bort set" onclick="this.parentElement.remove();saveWorkoutDraft()">✕</button>
       </div>`);
   }
 }
