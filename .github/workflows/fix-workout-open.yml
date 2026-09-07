@@ -1,0 +1,70 @@
+name: Fix workout opening
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix-workout-open.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Patch index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          new = '''async function startWorkout(pid,did,chosenDate=null){
+    activeDay={pid,did};
+    activeWorkoutDate=chosenDate || dateKey(new Date());
+
+    if(!Array.isArray(workoutProfiles) || workoutProfiles.length===0){
+      workoutProfiles=[data.activeProfile];
+    }
+
+    // Öppna passet direkt från lokal data.
+    renderWorkout();
+
+    // Synka med molnet i bakgrunden så en långsam Supabase-anslutning
+    // inte hindrar användaren från att öppna passet.
+    syncFromCloud()
+      .then(()=>{
+        if(activeDay && activeDay.pid===pid && activeDay.did===did){
+          renderWorkout();
+        }
+      })
+      .catch(err=>{
+        console.warn("Workouts cloud sync:",err);
+      });
+  }'''
+
+          pattern = r'async function startWorkout\(pid,did,chosenDate=null\)\{.*?\n  \}'
+          s2, n = re.subn(pattern, new, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'Could not find startWorkout (matches={n})')
+          p.write_text(s2, encoding='utf-8')
+          print('Patched index.html')
+          PY
+
+      - name: Commit fix and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/fix-workout-open.yml
+          git diff --cached --quiet && exit 0 || true
+          git commit -m "Fix workout session opening"
+          git push
