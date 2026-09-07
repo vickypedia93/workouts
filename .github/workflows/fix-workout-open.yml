@@ -3,8 +3,6 @@ name: Fix workout opening
 on:
   workflow_dispatch:
   push:
-    paths:
-      - '.github/workflows/fix-workout-open.yml'
 
 permissions:
   contents: write
@@ -35,11 +33,8 @@ jobs:
       workoutProfiles=[data.activeProfile];
     }
 
-    // Öppna passet direkt från lokal data.
     renderWorkout();
 
-    // Synka med molnet i bakgrunden så en långsam Supabase-anslutning
-    // inte hindrar användaren från att öppna passet.
     syncFromCloud()
       .then(()=>{
         if(activeDay && activeDay.pid===pid && activeDay.did===did){
@@ -59,12 +54,12 @@ jobs:
           print('Patched index.html')
           PY
 
-      - name: Commit fix and remove one-time workflow
+      - name: Commit fix and remove workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
           git rm .github/workflows/fix-workout-open.yml
-          git diff --cached --quiet && exit 0 || true
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Fix workout session opening"
           git push
